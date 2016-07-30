@@ -7,7 +7,7 @@ from email.mime.text import MIMEText
 from subprocess import call
 
 
-bonds = {'BTP-1FB19 4,25%': 'IT0003493258'}
+
 
 def get_last_price(isin):
     url_it = "http://www.borsaitaliana.it/borsa/obbligazioni/mot/btp/scheda/#.html?lang=it"
@@ -15,24 +15,14 @@ def get_last_price(isin):
     url = seg_url[0] + isin + seg_url[1]
     html = get(url)
     soup = BeautifulSoup(html.text, 'html.parser')
-    return soup.find_all('td', limit=2)[1].text.replace(',', '.')
+    return float(soup.find_all('td', limit=2)[1].text.replace(',', '.'))
 
-
-def make_email():
-    print('crezione report obbligazioni')
-    msg = ''
-    for bond in bonds:
-        price= get_last_price(bonds[bond])
-        msg+=bond+': '+price+'\n'
-        print('aggiorno {}'.format(bond))
-        sleep(randint(15, 30))
-    return msg
 
 
 def send_email(text):
 
     msg = MIMEText(text)
-    msg['Subject'] = 'prova'
+    msg['Subject'] = 'pi'
     msg['From'] = 'cavolo9876@gmail.com'
     msg['To'] = 'cavolo9876@gmail.com'
     s = smtplib.SMTP('localhost')
@@ -40,13 +30,33 @@ def send_email(text):
     print('messagio inviato')
     s.quit()
 
+def check(diz):
+
+    notification=False
+    msg=''
+
+    for bond in diz:
+        print('aggiorno {}'.format(bond))
+        price=get_last_price(diz[bond][0])
+        sleep(randint(15, 30))
+        if price < float(diz[bond][0]):
+            notification=True
+            msg='{0} è sceso sotto la soglia di {1}, ultim prezzo {2}\n'.format(bond, diz[bond][0], diz[bond][1])
+    if notification:
+        send_email(msg)
 
 def mainloop():
-
+#    try:
     while True:
-        email=make_email()
-        send_email(email)
+        call(['git', 'pull'])
+
+        with open('bonds.csv') as f:
+            temp=f.read().split('\n')
+            bonds={x.split(',')[0]:[x.split(',')[1],x.split(',')[2]] for x in temp }
+        check(bonds)
         sleep(1200)
+#    except:
+        send_email('errore programma pi')
 
 
 
