@@ -40,7 +40,7 @@ def send_email(text):
     s.send_message(msg)
     s.quit()
 
-def check(diz):
+def check(diz, auto):
 
     notification=False
     msg=''
@@ -52,8 +52,12 @@ def check(diz):
             text='{0} è sceso sotto la soglia di {1}, ultimo prezzo {2}'.format(bond, diz[bond][1], price)
             msg+=text+'\n'
         sleep(randint(15, 30))
-    if notification:
+    if notification and auto:
         send_email(msg)
+    elif notification and not auto:
+        click.echo(msg)
+    else:
+        click.echo('nessuna obbgligazione è scesa sotto la soglia')
 
 def get_bonds():
 
@@ -79,21 +83,22 @@ def cli():
 @click.option('--auto', default=False)
 def get(auto):
     '''attiva il programma'''
+
     if auto:
         sleep(60) #waiting for connection
-    check(get_bonds())
+    check(get_bonds(), auto)
 
 @cli.command()
 @click.argument('bond')
 def add(bond):
-    ''' aggiungi obbgligazioni NOME/ISIN/SOGLIA'''
+    ''' aggiungi obbgligazioni NOME-ISIN-SOGLIA'''
     with open(BONDS, 'a') as f:
         f.write('{0};{1};{2}'.format(*bond.split('-')))
 
 @cli.command()
 @click.argument('bond_name')
 def remove(bond_name):
-    '''rimuovi un obbligazione'''
+    '''rimuovi un obbligazione NOME'''
     if click.confirm('Vuoi davvero cancellare {}'.format(bond_name), default=False):
         with open(BONDS, 'r') as f:
             header=f.readline()
@@ -104,7 +109,7 @@ def remove(bond_name):
         with open(BONDS, 'w') as f:
             f.write(header)
             for line in new:
-                f.write('{0};{1};{2}'.format(*line))
+                f.write('{0};{1};{2}\n'.format(*line))
 
 @cli.command()
 def show():
@@ -115,4 +120,4 @@ def show():
 
 
 if __name__ == '__main__':
-    cli(obj={})
+    cli()
