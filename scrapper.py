@@ -65,7 +65,7 @@ def mainloop():
             sleep(1200)
 
     except KeyboardInterrupt:
-        pass
+        mainloop()
     except:
         err =  sys.exc_info()[1]
         msg='errore programma pi: {}'.format(err)
