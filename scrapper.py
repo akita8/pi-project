@@ -23,10 +23,12 @@ def get_last_price(isin):
 
 def send_email(text):
 
+    with open('/home/marco/Scrivania/pi-project/credentials.txt', 'r') as f:
+        cred=f.readline().strip('\n').split(',')
     msg = MIMEText(text)
     msg['Subject'] = 'notifica bond {}'.format(datetime.datetime.today())
-    msg['From'] = ''
-    msg['To'] = ''
+    msg['From'] = cred[0]
+    msg['To'] = cred[1]
     s = smtplib.SMTP('localhost')
     s.send_message(msg)
     s.quit()
@@ -53,19 +55,19 @@ def get_bonds(filename):
         if temp:
             formatted=[el.strip('\n').split(';') for el in temp]
             bonds={x[0]:(x[1], x[2]) for x in formatted}
-	    else:
+        else:
             sys.exit(0)
     return bonds
 
 def main():
-    try:
-        check(get_bonds('/home/marco/Scrivania/pi-project/bonds.csv'))
+#    try:
+    sleep(60)
+    check(get_bonds('/home/marco/Scrivania/pi-project/bonds.csv'))
 
-
-    except:
-        err =  sys.exc_info()[0]
-        msg='errore programma: {}'.format(err)
-        send_email(msg)
+    # except:
+    #     err =  sys.exc_info()[0]
+    #     msg='errore programma: {}'.format(err)
+    #     send_email(msg)
 
 
 
