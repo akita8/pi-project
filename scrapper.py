@@ -25,8 +25,8 @@ def send_email(text):
 
     msg = MIMEText(text)
     msg['Subject'] = 'notifica bond {}'.format(datetime.datetime.today())
-    msg['From'] = 'cavolo9876@gmail.com'
-    msg['To'] = 'cavolo9876@gmail.com'
+    msg['From'] = ''
+    msg['To'] = ''
     s = smtplib.SMTP('localhost')
     s.send_message(msg)
     s.quit()
@@ -47,17 +47,19 @@ def check(diz):
         send_email(msg)
 
 def get_bonds(filename):
-    with open(filename) as f:
+    with open(filename, 'r') as f:
+        f.readline()
         temp=f.readlines()
-        formatted=[el.strip('\n').split(';') for el in temp]
-        bonds={x[0]:(x[1], x[2]) for x in formatted}
+        if temp:
+            formatted=[el.strip('\n').split(';') for el in temp]
+            bonds={x[0]:(x[1], x[2]) for x in formatted}
+	    else:
+            sys.exit(0)
     return bonds
 
 def main():
-
     try:
-
-        check(get_bonds('bonds.csv'))
+        check(get_bonds('/home/marco/Scrivania/pi-project/bonds.csv'))
 
 
     except:
