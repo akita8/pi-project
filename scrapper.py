@@ -1,8 +1,9 @@
+import sys
+import smtplib
 from requests import get
 from bs4 import BeautifulSoup
 from random import randint
 from time import sleep
-import smtplib
 from email.mime.text import MIMEText
 from subprocess import call
 
@@ -38,25 +39,38 @@ def check(diz):
     for bond in diz:
         print('aggiorno {}'.format(bond))
         price=get_last_price(diz[bond][0])
-        sleep(randint(15, 30))
-        if price < float(diz[bond][0]):
+        if price < float(diz[bond][1]):
             notification=True
-            msg='{0} è sceso sotto la soglia di {1}, ultim prezzo {2}\n'.format(bond, diz[bond][0], diz[bond][1])
+            text='{0} è sceso sotto la soglia di {1}, ultimo prezzo {2}'.format(bond, diz[bond][1], price)
+            msg+=text+'\n'
+            print(text)
+        sleep(randint(15, 30))
     if notification:
         send_email(msg)
 
-def mainloop():
-#    try:
-    while True:
-        call(['git', 'pull'])
+def get_bonds(filename):
+    with open(filename) as f:
+        temp=f.readlines()
+        formatted=[el.strip('\n').split(';') for el in temp]
+        bonds={x[0]:(x[1], x[2]) for x in formatted}
+    return bonds
 
-        with open('bonds.csv') as f:
-            temp=f.read().split('\n')
-            bonds={x.split(',')[0]:[x.split(',')[1],x.split(',')[2]] for x in temp }
-        check(bonds)
-        sleep(1200)
-#    except:
-        send_email('errore programma pi')
+def mainloop():
+
+    try:
+        while True:
+            call(['git', 'pull'])
+            check(get_bonds('bonds.csv'))
+            print('standby')
+            sleep(1200)
+
+    except KeyboardInterrupt:
+        pass
+    except:
+        err =  sys.exc_info()[1]
+        msg='errore programma pi: {}'.format(err)
+        print(msg)
+        send_email(msg)
 
 
 
