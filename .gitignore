@@ -1,1 +1,5 @@
 credentials.txt
+venv
+scrapper.egg-info
+credentials.txt
+__pycache__
