@@ -98,20 +98,34 @@ def add(bond):
         f.write('{0};{1};{2}\n'.format(*bond.split('-')))
 
 @cli.command()
+@click.option('--mod', default='')
 @click.argument('bond_name')
-def remove(bond_name):
+def remove(mod, bond_name):
     '''rimuovi un obbligazione NOME'''
-    if click.confirm('Vuoi davvero cancellare {}'.format(bond_name), default=False):
-        with open(BONDS, 'r') as f:
-            header=f.readline()
-            temp=f.readlines()
 
-        new=[el for el in formatted(temp) if el[0]!=bond_name]
+    with open(BONDS, 'r') as f:
+        header=f.readline()
+        temp=f.readlines()
 
+
+    if mod:
+        new=[el for el in formatted(temp)]
         with open(BONDS, 'w') as f:
             f.write(header)
             for line in new:
-                f.write('{0};{1};{2}\n'.format(*line))
+                if line[0]==bond_name:
+                    f.write('{0};{1};{2}\n'.format(line[0], line[1], mod))
+                else:
+                    f.write('{0};{1};{2}\n'.format(*line))
+    else:
+        if click.confirm('Vuoi davvero cancellare {}'.format(bond_name), default=False):
+
+            new=[el for el in formatted(temp) if el[0]!=bond_name]
+
+            with open(BONDS, 'w') as f:
+                f.write(header)
+                for line in new:
+                    f.write('{0};{1};{2}\n'.format(*line))
 
 @cli.command()
 def show():
