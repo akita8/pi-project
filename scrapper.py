@@ -23,7 +23,7 @@ def get_last_price(isin):
 
     url_it = "http://www.borsaitaliana.it/borsa/obbligazioni/mot/btp/scheda/#.html?lang=it"
     seg_url = url_it.split('#')
-    url = seg_url[0] + isin + seg_url[1]
+    url = seg_url[0] + isin.upper() + seg_url[1]
     html = requests.get(url)
     soup = BeautifulSoup(html.text, 'html.parser')
     return float(soup.find_all('td', limit=2)[1].text.replace(',', '.'))
@@ -51,7 +51,9 @@ def check(diz, auto):
             notification=True
             text='{0} è sceso sotto la soglia di {1}, ultimo prezzo {2}'.format(bond, diz[bond][1], price)
             msg+=text+'\n'
-        sleep(randint(15, 30))
+        if not auto:
+            click.echo('Aggiorno {}'.format(bond))
+        sleep(randint(5, 15))
     if notification and auto:
         send_email(msg)
     elif notification and not auto:
@@ -93,7 +95,7 @@ def get(auto):
 def add(bond):
     ''' aggiungi obbgligazioni NOME-ISIN-SOGLIA'''
     with open(BONDS, 'a') as f:
-        f.write('{0};{1};{2}'.format(*bond.split('-')))
+        f.write('{0};{1};{2}\n'.format(*bond.split('-')))
 
 @cli.command()
 @click.argument('bond_name')
