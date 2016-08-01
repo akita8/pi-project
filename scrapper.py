@@ -98,7 +98,7 @@ def add(bond):
         f.write('{0};{1};{2}\n'.format(*bond.split('-')))
 
 @cli.command()
-@click.option('--mod', default='')
+@click.option('--mod', default='', help='modifica la soglia di notifica')
 @click.argument('bond_name')
 def remove(mod, bond_name):
     '''rimuovi un obbligazione NOME'''
