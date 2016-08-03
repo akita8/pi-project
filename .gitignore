@@ -1,7 +1,8 @@
 credentials.txt
-venv
+VENV
 scrapper.egg-info
 credentials.txt
 __pycache__
 bonds.csv
 testing.py
+stocks.py
