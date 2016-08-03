@@ -4,3 +4,4 @@ scrapper.egg-info
 credentials.txt
 __pycache__
 bonds.csv
+testing.py

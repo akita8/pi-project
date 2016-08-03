@@ -16,7 +16,6 @@ BONDS=ROOT_FOLDER+'/bonds.csv'
 CREDENTIALS=ROOT_FOLDER+'/credentials.txt'
 
 def formatted(raw):
-
     return [el.strip('\n').split(';') for el in raw]
 
 def get_last_price(isin):
@@ -26,7 +25,7 @@ def get_last_price(isin):
     url = seg_url[0] + isin.upper() + seg_url[1]
     html = requests.get(url)
     soup = BeautifulSoup(html.text, 'html.parser')
-    return float(soup.find_all('td', limit=2)[1].text.replace(',', '.'))
+    return float(soup.find_all('td', limit=8)[7].text.replace(',', '.'))
 
 def send_email(text):
 
@@ -58,6 +57,8 @@ def check(diz, auto):
         send_email(msg)
     elif notification and not auto:
         click.echo(msg)
+    elif auto:
+        send_email('messaggio di testing')
     else:
         click.echo('nessuna obbgligazione è scesa sotto la soglia')
 
