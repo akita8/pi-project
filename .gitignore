@@ -5,4 +5,4 @@ credentials.txt
 __pycache__
 bonds.csv
 testing.py
-stocks.py
+stocks.csv
