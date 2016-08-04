@@ -12,11 +12,14 @@ from time import sleep
 from email.mime.text import MIMEText
 from subprocess import call
 
+# gestire il caso simbolo o isin sbagliato
+# gestire mancanza di connessione
 
 ROOT_FOLDER = os.path.abspath(os.path.dirname(__file__))
 BONDS = ROOT_FOLDER + '/bonds.csv'
 STOCKS = ROOT_FOLDER + '/stocks.csv'
 CREDENTIALS = ROOT_FOLDER + '/credentials.txt'
+
 
 def send_email(text):
 
@@ -30,6 +33,7 @@ def send_email(text):
     s.send_message(msg)
     s.quit()
 
+
 def formatted(raw):
     return [el.strip('\n').split(';') for el in raw]
 
@@ -39,8 +43,9 @@ def get_asset_type(path):
 
 
 def url_completion(url, inclusion):
-    seg= url.split('#')
+    seg = url.split('#')
     return '{0}{1}{2}'.format(seg[0], inclusion, seg[1])
+
 
 def get_assets(fileloc):
 
@@ -49,12 +54,13 @@ def get_assets(fileloc):
         temp = f.readlines()
 
     if temp:
-        assets=OrderedDict()
+        assets = OrderedDict()
         for line in formatted(temp):
-            assets[line[0]]=[line[1], line[2]]
+            assets[line[0]] = [line[1], line[2]]
     else:
-        return None #da cambiare
+        return None  # da cambiare
     return assets
+
 
 def get_bond_price(isin):
 
@@ -67,18 +73,20 @@ def get_bond_price(isin):
 
 def get_stock_price(stocks):
 
-    symbol_str=''
+    symbol_str = ''
     for stock in stocks:
-        symbol_str+='{}+'.format(stocks[stock][0])
-    symbol_str=symbol_str[:-1]
-    url = url_completion('http://finance.yahoo.com/d/quotes.csv?s=#&f=l1', symbol_str)
-    prices=requests.get(url).text.split('\n')[:-1]
-    polished=list(map(lambda x:float(x), prices))
-    cont=0
+        symbol_str += '{}+'.format(stocks[stock][0])
+    symbol_str = symbol_str[:-1]
+    url = url_completion(
+        'http://finance.yahoo.com/d/quotes.csv?s=#&f=l1', symbol_str)
+    prices = requests.get(url).text.split('\n')[:-1]
+    polished = list(map(lambda x: float(x), prices))
+    cont = 0
     for stock in stocks:
         stocks[stock].append(polished[cont])
-        cont+=1
+        cont += 1
     return stocks
+
 
 def check(bonds, stocks, auto):
 
@@ -86,25 +94,46 @@ def check(bonds, stocks, auto):
     msg = ''
 
     if stocks:
-        stocks=get_stock_price(stocks)
+        stocks = get_stock_price(stocks)
         for stock in stocks:
-            temp=stocks[stock]
-            if temp[2]<float(temp[1]):
-                notification=True
-                text = '{0} è sceso sotto la soglia di {1}, ultimo prezzo {2}'.format(stock, temp[1], temp[2])
-                msg += text + '\n'
-
+            temp = stocks[stock]
+            stock_prefix = temp[1][:1]
+            if stock_prefix == '+':
+                stock_limit = float(temp[1][1:])
+                if temp[2] > stock_limit:
+                    notification = True
+                    text = '{0} è salita sopra la soglia di {1}, ultimo prezzo {2}'
+                    msg += text.format(stock, temp[1], temp[2]) + '\n'
+            else:
+                stock_limit = float(temp[1])
+                if stock_prefix == '-':
+                    stock_limit = float(temp[1][1:])
+                if temp[2] < stock_limit:
+                    notification = True
+                    text = '{0} è sceso sotto la soglia di {1}, ultimo prezzo {2}'
+                    msg += text.format(stock, temp[1], temp[2]) + '\n'
     else:
         click.echo('nessuna azione inserita!')
 
     if bonds:
         for bond in bonds:
             bond_price = get_bond_price(bonds[bond][0])
-            if bond_price < float(bonds[bond][1]):
-                notification = True
-                text = '{0} è sceso sotto la soglia di {1}, ultimo prezzo {2}'.format(bond, bonds[
-                                                                                      bond][1], bond_price)
-                msg += text + '\n'
+            bond_prefix = bonds[bond][1][:1]
+            if bond_prefix == '+':
+                bond_limit = float(bonds[bond][1][1:])
+                if bond_price > bond_limit:
+                    notification = True
+                    text = '{0} è salita sopra la soglia di {1}, ultimo prezzo {2}'
+                    msg += text.format(bond, bonds[bond][1], bond_price) + '\n'
+            else:
+                bond_limit = float(bonds[bond][1])
+                if bond_prefix == '-':
+                    bond_limit = float(bonds[bond][1][1:])
+                if bond_price < bond_limit:
+                    notification = True
+                    text = '{0} è sceso sotto la soglia di {1}, ultimo prezzo {2}'
+                    msg += text.format(bond, bonds[bond][1], bond_price) + '\n'
+
             if not auto:
                 click.echo('Aggiorno {}'.format(bond))
             sleep(randint(5, 10))
@@ -202,7 +231,7 @@ def remove(mod, bond, stock):
 def show():
     '''mostra le azioni e obbligazioni inserite'''
     with open(BONDS, 'r') as f, open(STOCKS, 'r') as d:
-        text=f.read().replace(';', ' ')+'\n'+d.read().replace(';', ' ')
+        text = f.read().replace(';', ' ') + '\n' + d.read().replace(';', ' ')
         click.echo_via_pager(text)
 
 
