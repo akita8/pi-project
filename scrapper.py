@@ -88,9 +88,8 @@ def get_stock_price(stocks):
     return stocks
 
 
-def check(bonds, stocks, auto):
+def check_stocks(stocks):
 
-    notification = False
     msg = ''
 
     if stocks:
@@ -101,7 +100,6 @@ def check(bonds, stocks, auto):
             if stock_prefix == '+':
                 stock_limit = float(temp[1][1:])
                 if temp[2] > stock_limit:
-                    notification = True
                     text = '{0} è salita sopra la soglia di {1}, ultimo prezzo {2}'
                     msg += text.format(stock, temp[1], temp[2]) + '\n'
             else:
@@ -109,11 +107,21 @@ def check(bonds, stocks, auto):
                 if stock_prefix == '-':
                     stock_limit = float(temp[1][1:])
                 if temp[2] < stock_limit:
-                    notification = True
                     text = '{0} è sceso sotto la soglia di {1}, ultimo prezzo {2}'
                     msg += text.format(stock, temp[1], temp[2]) + '\n'
+
     else:
-        click.echo('nessuna azione inserita!')
+        return'nessuna azione inserita!\n'
+
+    if not msg:
+        return'nessuna obbgligazione è scesa sotto la soglia\n'
+
+    return msg
+
+
+def check_bonds(bonds):
+
+    msg = ''
 
     if bonds:
         for bond in bonds:
@@ -122,7 +130,6 @@ def check(bonds, stocks, auto):
             if bond_prefix == '+':
                 bond_limit = float(bonds[bond][1][1:])
                 if bond_price > bond_limit:
-                    notification = True
                     text = '{0} è salita sopra la soglia di {1}, ultimo prezzo {2}'
                     msg += text.format(bond, bonds[bond][1], bond_price) + '\n'
             else:
@@ -130,25 +137,18 @@ def check(bonds, stocks, auto):
                 if bond_prefix == '-':
                     bond_limit = float(bonds[bond][1][1:])
                 if bond_price < bond_limit:
-                    notification = True
                     text = '{0} è sceso sotto la soglia di {1}, ultimo prezzo {2}'
                     msg += text.format(bond, bonds[bond][1], bond_price) + '\n'
 
-            if not auto:
-                click.echo('Aggiorno {}'.format(bond))
+            click.echo('Aggiorno {}'.format(bond))
             sleep(randint(5, 10))
-
     else:
-        click.echo('nessuna obbligazione inserita!')
+        return'nessuna obbligazione inserita!\n'
 
-    if notification and auto:
-        send_email(msg)
-    elif notification and not auto:
-        click.echo(msg)
-    elif auto:
-        send_email('messaggio di testing')
-    else:
-        click.echo('nessuna obbgligazione o azione è scesa sotto la soglia')
+    if not msg:
+        return'nessuna obbgligazione è scesa sotto la soglia\n'
+
+    return msg
 
 
 @click.group()
@@ -163,20 +163,26 @@ def cli():
 
 
 @cli.command()
-@click.option('--auto', default=False)
-def get(auto):
+@click.option('--stock', 'only_one', flag_value='stock', help='controlla solo le azioni')
+@click.option('--bond', 'only_one', flag_value='bond', help='controlla solo le obbligazioni')
+def get(only_one):
     '''attiva il programma'''
 
-    if auto:
-        sleep(60)  # waiting for connection at startup
-    check(get_assets(BONDS), get_assets(STOCKS), auto)
+    if only_one == 'stock':
+        click.echo(check_stocks(get_assets(STOCKS)))
+
+    elif only_one == 'bond':
+        click.echo(check_bonds(get_assets(BONDS)))
+    else:
+        msg = check_stocks(get_assets(STOCKS)) + check_bonds(get_assets(BONDS))
+        click.echo(msg)
 
 
 @cli.command()
 @click.option('--bond', nargs=3, type=str, default=(), help='obbligazione : NOME ISIN SOGLIA')
 @click.option('--stock', nargs=3, type=str, default=(), help='azione : NOME SIMBOLO SOGLIA')
 def add(bond, stock):
-    ''' Aggiungi asset'''
+    ''' aggiungi un azione o obbligazione'''
 
     if bond:
         with open(BONDS, 'a') as f:
@@ -191,7 +197,7 @@ def add(bond, stock):
 @click.option('--bond', default='', help='NOME obbligazione da rimuovere o modificare')
 @click.option('--stock', default='', help='NOME azione da rimuovere o modificare')
 def remove(mod, bond, stock):
-    '''rimuovi un asset NOME'''
+    '''rimuovi un azione o obbligazione'''
 
     if bond:
         selected = BONDS
@@ -230,6 +236,7 @@ def remove(mod, bond, stock):
 @cli.command()
 def show():
     '''mostra le azioni e obbligazioni inserite'''
+
     with open(BONDS, 'r') as f, open(STOCKS, 'r') as d:
         text = f.read().replace(';', ' ') + '\n' + d.read().replace(';', ' ')
         click.echo_via_pager(text)
