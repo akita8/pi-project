@@ -21,7 +21,7 @@ STOCKS = ROOT_FOLDER + '/stocks.csv'
 CREDENTIALS = ROOT_FOLDER + '/credentials.txt'
 
 
-def send_email(text):
+def send_email(text):  # da spostare
 
     with open(CREDENTIALS, 'r') as f:
         cred = f.readline().strip('\n').split(',')
@@ -36,10 +36,6 @@ def send_email(text):
 
 def formatted(raw):
     return [el.strip('\n').split(';') for el in raw]
-
-
-def get_asset_type(path):
-    return path.split('/')[-1].split('.')[0]
 
 
 def url_completion(url, inclusion):
@@ -88,40 +84,57 @@ def get_stock_price(stocks):
     return stocks
 
 
+def compute_progress(price, limit):  # da finire
+
+    if max(price, limit)==limit:  # price<limit
+        gap = limit - price
+        progress = gap / price
+    else:  # limit<price
+        gap = price - limit
+        progress = gap / price
+    return '{}%'.format(str(progress*100)[:4])
+
 def check_stocks(stocks):
 
     msg = ''
+    p_msg=''
+    p_str='progresso {}: '
 
     if stocks:
         stocks = get_stock_price(stocks)
         for stock in stocks:
-            temp = stocks[stock]
-            stock_prefix = temp[1][:1]
+            limit=stocks[stock][1]
+            stock_price=stocks[stock][2]
+            stock_prefix =limit[:1]
             if stock_prefix == '+':
-                stock_limit = float(temp[1][1:])
-                if temp[2] > stock_limit:
+                stock_limit = float(limit[1:])
+                p_msg+='+ '+p_str.format(stock)+compute_progress(stock_price, stock_limit)+'\n'
+                if stock_price > stock_limit:
                     text = '{0} è salita sopra la soglia di {1}, ultimo prezzo {2}'
-                    msg += text.format(stock, temp[1], temp[2]) + '\n'
+                    msg += text.format(stock, stock_limit, stock_price) + '\n'
             else:
-                stock_limit = float(temp[1])
+                stock_limit = float(limit)
                 if stock_prefix == '-':
-                    stock_limit = float(temp[1][1:])
-                if temp[2] < stock_limit:
-                    text = '{0} è sceso sotto la soglia di {1}, ultimo prezzo {2}'
-                    msg += text.format(stock, temp[1], temp[2]) + '\n'
+                    stock_limit = float(limit[1:])
+                p_msg+='- '+p_str.format(stock)+compute_progress(stock_price, stock_limit)+'\n'
+                if stock_price < stock_limit:
+                    text = '{0} è scesa sotto la soglia di {1}, ultimo prezzo {2}'
+                    msg += text.format(stock, stock_limit, stock_price) + '\n'
 
     else:
-        return'nessuna azione inserita!\n'
+        return'nessuna azione inserita!\n\n'
 
     if not msg:
-        return'nessuna obbgligazione è scesa sotto la soglia\n'
+        return'nessuna azione è scesa sotto la soglia\n\n'
 
-    return msg
+    return msg+p_msg
 
 
 def check_bonds(bonds):
 
     msg = ''
+    p_msg=''
+    p_str='progresso: {}'
 
     if bonds:
         for bond in bonds:
@@ -129,6 +142,7 @@ def check_bonds(bonds):
             bond_prefix = bonds[bond][1][:1]
             if bond_prefix == '+':
                 bond_limit = float(bonds[bond][1][1:])
+                p_msg+='+ '+p_str.format(stock)+compute_progress(bond_price, bond_limit)+'\n'
                 if bond_price > bond_limit:
                     text = '{0} è salita sopra la soglia di {1}, ultimo prezzo {2}'
                     msg += text.format(bond, bonds[bond][1], bond_price) + '\n'
@@ -136,19 +150,18 @@ def check_bonds(bonds):
                 bond_limit = float(bonds[bond][1])
                 if bond_prefix == '-':
                     bond_limit = float(bonds[bond][1][1:])
+                p_msg+='- '+p_str.format(stock)+compute_progress(bond_price, bond_limit)+'\n'
                 if bond_price < bond_limit:
                     text = '{0} è sceso sotto la soglia di {1}, ultimo prezzo {2}'
                     msg += text.format(bond, bonds[bond][1], bond_price) + '\n'
-
-            click.echo('Aggiorno {}'.format(bond))
             sleep(randint(5, 10))
     else:
-        return'nessuna obbligazione inserita!\n'
+        return'nessuna obbligazione inserita!\n\n'
 
     if not msg:
-        return'nessuna obbgligazione è scesa sotto la soglia\n'
+        return'nessuna obbgligazione è scesa sotto la soglia\n\n'
 
-    return msg
+    return msg+p_msg
 
 
 @click.group()
@@ -169,12 +182,16 @@ def get(only_one):
     '''attiva il programma'''
 
     if only_one == 'stock':
+        click.echo('aggiorno i prezzi delle azioni')
         click.echo(check_stocks(get_assets(STOCKS)))
 
     elif only_one == 'bond':
+        click.echo('aggiorno i prezzi delle obbligazioni')
         click.echo(check_bonds(get_assets(BONDS)))
     else:
-        msg = check_stocks(get_assets(STOCKS)) + check_bonds(get_assets(BONDS))
+        click.echo('aggiorno i prezzi di azioni e obbligazioni')
+        msg = check_stocks(get_assets(STOCKS))
+        msg+= check_bonds(get_assets(BONDS))
         click.echo(msg)
 
 
