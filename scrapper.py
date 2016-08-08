@@ -125,7 +125,7 @@ def check_stocks(stocks):
         return'nessuna azione inserita!\n\n'
 
     if not msg:
-        return'nessuna azione è scesa sotto la soglia\n\n'
+        return p_msg+'nessuna azione è scesa sotto la soglia\n\n'
 
     return msg+p_msg
 
@@ -159,7 +159,7 @@ def check_bonds(bonds):
         return'nessuna obbligazione inserita!\n\n'
 
     if not msg:
-        return'nessuna obbgligazione è scesa sotto la soglia\n\n'
+        return p_msg+'nessuna obbgligazione è scesa sotto la soglia\n\n'
 
     return msg+p_msg
 
