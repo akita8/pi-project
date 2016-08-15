@@ -1,6 +1,6 @@
 import click
 import sys
-import smtplib
+
 import requests
 import datetime
 import os
@@ -9,8 +9,7 @@ from os.path import isfile
 from bs4 import BeautifulSoup
 from random import randint
 from time import sleep
-from email.mime.text import MIMEText
-from subprocess import call
+
 
 # gestire il caso simbolo o isin sbagliato
 # gestire mancanza di connessione
@@ -18,20 +17,6 @@ from subprocess import call
 ROOT_FOLDER = os.path.abspath(os.path.dirname(__file__))
 BONDS = ROOT_FOLDER + '/bonds.csv'
 STOCKS = ROOT_FOLDER + '/stocks.csv'
-CREDENTIALS = ROOT_FOLDER + '/credentials.txt'
-
-
-def send_email(text):  # da spostare
-
-    with open(CREDENTIALS, 'r') as f:
-        cred = f.readline().strip('\n').split(',')
-    msg = MIMEText(text)
-    msg['Subject'] = 'notifica asset {}'.format(datetime.date.today())
-    msg['From'] = cred[0]
-    msg['To'] = cred[1]
-    s = smtplib.SMTP('localhost')
-    s.send_message(msg)
-    s.quit()
 
 
 def formatted(raw):
@@ -64,7 +49,11 @@ def get_bond_price(isin):
         '''http://www.borsaitaliana.it/borsa/obbligazioni/mot/btp/scheda/#.html?lang=it''', isin.upper())
     html = requests.get(url)
     soup = BeautifulSoup(html.text, 'html.parser')
-    return float(soup.find_all('td', limit=8)[7].text.replace(',', '.'))
+    try:
+        return float(soup.find_all('td', limit=8)[7].text.replace(',', '.'))
+    except IndexError:
+        print('isin sbagliato!: {}'.format(isin))
+        return False
 
 
 def get_stock_price(stocks):
@@ -108,7 +97,7 @@ def check_stocks(stocks):
             stock_prefix =limit[:1]
             if stock_prefix == '+':
                 stock_limit = float(limit[1:])
-                p_msg+='+ '+p_str.format(stock)+compute_progress(stock_price, stock_limit)+'\n'
+                p_msg+='+ '+p_str.format(stock)+' '+compute_progress(stock_price, stock_limit)+'\n'
                 if stock_price > stock_limit:
                     text = '{0} è salita sopra la soglia di {1}, ultimo prezzo {2}'
                     msg += text.format(stock, stock_limit, stock_price) + '\n'
@@ -116,7 +105,7 @@ def check_stocks(stocks):
                 stock_limit = float(limit)
                 if stock_prefix == '-':
                     stock_limit = float(limit[1:])
-                p_msg+='- '+p_str.format(stock)+compute_progress(stock_price, stock_limit)+'\n'
+                p_msg+='- '+p_str.format(stock)+' '+compute_progress(stock_price, stock_limit)+'\n'
                 if stock_price < stock_limit:
                     text = '{0} è scesa sotto la soglia di {1}, ultimo prezzo {2}'
                     msg += text.format(stock, stock_limit, stock_price) + '\n'
@@ -139,10 +128,12 @@ def check_bonds(bonds):
     if bonds:
         for bond in bonds:
             bond_price = get_bond_price(bonds[bond][0])
+            if not bond_price:
+                continue
             bond_prefix = bonds[bond][1][:1]
             if bond_prefix == '+':
                 bond_limit = float(bonds[bond][1][1:])
-                p_msg+='+ '+p_str.format(stock)+compute_progress(bond_price, bond_limit)+'\n'
+                p_msg+='+ '+p_str.format(bond)+' '+compute_progress(bond_price, bond_limit)+'\n'
                 if bond_price > bond_limit:
                     text = '{0} è salita sopra la soglia di {1}, ultimo prezzo {2}'
                     msg += text.format(bond, bonds[bond][1], bond_price) + '\n'
@@ -150,7 +141,7 @@ def check_bonds(bonds):
                 bond_limit = float(bonds[bond][1])
                 if bond_prefix == '-':
                     bond_limit = float(bonds[bond][1][1:])
-                p_msg+='- '+p_str.format(stock)+compute_progress(bond_price, bond_limit)+'\n'
+                p_msg+='- '+p_str.format(bond)+' '+compute_progress(bond_price, bond_limit)+'\n'
                 if bond_price < bond_limit:
                     text = '{0} è sceso sotto la soglia di {1}, ultimo prezzo {2}'
                     msg += text.format(bond, bonds[bond][1], bond_price) + '\n'
