@@ -103,7 +103,7 @@ def check_stocks(stocks):
                 stock_limit = float(limit)
                 if stock_prefix == '-':
                     stock_limit = float(limit[1:])
-                    progress = compute_progress(stock_price, stock_limit)
+                progress = compute_progress(stock_price, stock_limit)
                 log += log_text.format(stock, progress, stock_price)
                 if stock_price < stock_limit:
                     text = '{0} è scesa sotto la soglia di {1}, ultimo prezzo {2}'
