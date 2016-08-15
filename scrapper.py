@@ -1,5 +1,4 @@
 import click
-import sys
 import smtplib
 import requests
 import datetime
@@ -86,29 +85,32 @@ def get_stock_price(stocks):
 
 def compute_progress(price, limit):  # da finire
 
-    if max(price, limit)==limit:  # price<limit
+    if max(price, limit) == limit:  # price<limit
         gap = limit - price
         progress = gap / price
     else:  # limit<price
         gap = price - limit
         progress = gap / price
-    return '{}%'.format(str(progress*100)[:4])
+    return '{}%'.format(str(progress * 100)[:4])
+
 
 def check_stocks(stocks):
 
     msg = ''
-    p_msg=''
-    p_str='progresso {}: '
+    p_msg = ''
+    p_str = 'progresso {}: '
 
     if stocks:
         stocks = get_stock_price(stocks)
         for stock in stocks:
-            limit=stocks[stock][1]
-            stock_price=stocks[stock][2]
-            stock_prefix =limit[:1]
+            limit = stocks[stock][1]
+            stock_price = stocks[stock][2]
+            stock_prefix = limit[:1]
             if stock_prefix == '+':
                 stock_limit = float(limit[1:])
-                p_msg+='+ '+p_str.format(stock)+compute_progress(stock_price, stock_limit)+'\n'
+                p_msg += '+ ' + \
+                    p_str.format(
+                        stock) + compute_progress(stock_price, stock_limit) + '\n'
                 if stock_price > stock_limit:
                     text = '{0} è salita sopra la soglia di {1}, ultimo prezzo {2}'
                     msg += text.format(stock, stock_limit, stock_price) + '\n'
@@ -116,7 +118,9 @@ def check_stocks(stocks):
                 stock_limit = float(limit)
                 if stock_prefix == '-':
                     stock_limit = float(limit[1:])
-                p_msg+='- '+p_str.format(stock)+compute_progress(stock_price, stock_limit)+'\n'
+                p_msg += '- ' + \
+                    p_str.format(
+                        stock) + compute_progress(stock_price, stock_limit) + '\n'
                 if stock_price < stock_limit:
                     text = '{0} è scesa sotto la soglia di {1}, ultimo prezzo {2}'
                     msg += text.format(stock, stock_limit, stock_price) + '\n'
@@ -125,16 +129,16 @@ def check_stocks(stocks):
         return'nessuna azione inserita!\n\n'
 
     if not msg:
-        return p_msg+'nessuna azione è scesa sotto la soglia\n\n'
+        return p_msg + 'nessuna azione è scesa sotto la soglia\n\n'
 
-    return msg+p_msg
+    return msg + p_msg
 
 
 def check_bonds(bonds):
 
     msg = ''
-    p_msg=''
-    p_str='progresso: {}'
+    p_msg = ''
+    p_str = 'progresso: {}'
 
     if bonds:
         for bond in bonds:
@@ -142,7 +146,9 @@ def check_bonds(bonds):
             bond_prefix = bonds[bond][1][:1]
             if bond_prefix == '+':
                 bond_limit = float(bonds[bond][1][1:])
-                p_msg+='+ '+p_str.format(stock)+compute_progress(bond_price, bond_limit)+'\n'
+                p_msg += '+ ' + \
+                    p_str.format(bond) + \
+                    compute_progress(bond_price, bond_limit) + '\n'
                 if bond_price > bond_limit:
                     text = '{0} è salita sopra la soglia di {1}, ultimo prezzo {2}'
                     msg += text.format(bond, bonds[bond][1], bond_price) + '\n'
@@ -150,7 +156,9 @@ def check_bonds(bonds):
                 bond_limit = float(bonds[bond][1])
                 if bond_prefix == '-':
                     bond_limit = float(bonds[bond][1][1:])
-                p_msg+='- '+p_str.format(stock)+compute_progress(bond_price, bond_limit)+'\n'
+                p_msg += '- ' + \
+                    p_str.format(bond) + \
+                    compute_progress(bond_price, bond_limit) + '\n'
                 if bond_price < bond_limit:
                     text = '{0} è sceso sotto la soglia di {1}, ultimo prezzo {2}'
                     msg += text.format(bond, bonds[bond][1], bond_price) + '\n'
@@ -159,9 +167,9 @@ def check_bonds(bonds):
         return'nessuna obbligazione inserita!\n\n'
 
     if not msg:
-        return p_msg+'nessuna obbgligazione è scesa sotto la soglia\n\n'
+        return p_msg + 'nessuna obbgligazione è scesa sotto la soglia\n\n'
 
-    return msg+p_msg
+    return msg + p_msg
 
 
 @click.group()
@@ -191,7 +199,7 @@ def get(only_one):
     else:
         click.echo('aggiorno i prezzi di azioni e obbligazioni')
         msg = check_stocks(get_assets(STOCKS))
-        msg+= check_bonds(get_assets(BONDS))
+        msg += check_bonds(get_assets(BONDS))
         click.echo(msg)
 
 
