@@ -57,14 +57,13 @@ def get_stock_price(stocks):
     symbol_str = ''
     for stock in stocks:
         symbol_str += '{}+'.format(stocks[stock][0])
-    symbol_str = symbol_str[:-1]
     url = url_completion(
-        'http://finance.yahoo.com/d/quotes.csv?s=#&f=l1', symbol_str)
+        'http://finance.yahoo.com/d/quotes.csv?s=#&f=l1c1', symbol_str[:-1])
     prices = requests.get(url).text.split('\n')[:-1]
-    polished = list(map(lambda x: float(x), prices))
+    polished = [[float(y) for y in x.split(',')] for x in prices]
     cont = 0
     for stock in stocks:
-        stocks[stock].append(polished[cont])
+        stocks[stock].extend(polished[cont])
         cont += 1
     return stocks
 
@@ -84,30 +83,31 @@ def check_stocks(stocks):
 
     msg = ''
     log = ''
-    log_text ='progresso {} : {} prezzo: {}\n'
+    msg_txt_up = '{} è salita sopra la soglia di {}, ultimo prezzo {}\n'
+    msg_txt_down = '{} è scesa sotto la soglia di {}, ultimo prezzo {}\n'
+    log_txt = '{} progresso: {} prezzo: {} variazione: {}\n'
 
     if stocks:
         stocks = get_stock_price(stocks)
         for stock in stocks:
             limit = stocks[stock][1]
             stock_price = stocks[stock][2]
+            var = stocks[stock][3]
             stock_prefix = limit[:1]
             if stock_prefix == '+':
                 stock_limit = float(limit[1:])
                 progress = compute_progress(stock_price, stock_limit)
-                log +='+ '+log_text.format(stock, progress, stock_price)
+                log += '+ '+log_txt.format(stock, progress, stock_price, var)
                 if stock_price > stock_limit:
-                    text = '{0} è salita sopra la soglia di {1}, ultimo prezzo {2}'
-                    msg += text.format(stock, stock_limit, stock_price) + '\n'
+                    msg += msg_txt_up.format(stock, stock_limit, stock_price)
             else:
                 stock_limit = float(limit)
                 if stock_prefix == '-':
                     stock_limit = float(limit[1:])
                 progress = compute_progress(stock_price, stock_limit)
-                log += '- '+log_text.format(stock, progress, stock_price)
+                log += '- '+log_txt.format(stock, progress, stock_price, var)
                 if stock_price < stock_limit:
-                    text = '{0} è scesa sotto la soglia di {1}, ultimo prezzo {2}'
-                    msg += text.format(stock, stock_limit, stock_price) + '\n'
+                    msg += msg_txt_down.format(stock, stock_limit, stock_price)
 
     else:
         return'nessuna azione inserita!\n\n'
@@ -122,7 +122,7 @@ def check_bonds(bonds):
 
     msg = ''
     log = ''
-    log_text ='progresso {} : {} prezzo: {}\n'
+    log_text = 'progresso {} : {} prezzo: {}\n'
 
     if bonds:
         for bond in bonds:
@@ -142,7 +142,7 @@ def check_bonds(bonds):
                 if bond_prefix == '-':
                     bond_limit = float(bonds[bond][1][1:])
                 progress = compute_progress(bond_price, bond_limit)
-                log += '- '+ log_text.format(bond, progress, bond_price)
+                log += '- ' + log_text.format(bond, progress, bond_price)
                 if bond_price < bond_limit:
                     text = '{0} è sceso sotto la soglia di {1}, ultimo prezzo {2}'
                     msg += text.format(bond, bonds[bond][1], bond_price) + '\n'
