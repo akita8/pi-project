@@ -6,7 +6,7 @@ from os.path import isfile
 from bs4 import BeautifulSoup
 from random import randint
 from time import sleep
-
+from humanfriendly.tables import format_pretty_table
 
 # gestire il caso simbolo o isin sbagliato
 # gestire mancanza di connessione
@@ -58,9 +58,10 @@ def get_stock_price(stocks):
     for stock in stocks:
         symbol_str += '{}+'.format(stocks[stock][0])
     url = url_completion(
-        'http://finance.yahoo.com/d/quotes.csv?s=#&f=l1c1', symbol_str[:-1])
+        'http://finance.yahoo.com/d/quotes.csv?s=#&f=l1p2', symbol_str[:-1])
     prices = requests.get(url).text.split('\n')[:-1]
-    polished = [[float(y) for y in x.split(',')] for x in prices]
+    raw = [x.split(',') for x in prices]
+    polished = list(map((lambda y: [float(y[0]), y[1].replace('"', '')]), raw))
     cont = 0
     for stock in stocks:
         stocks[stock].extend(polished[cont])
@@ -82,10 +83,11 @@ def compute_progress(price, limit):  # da finire
 def check_stocks(stocks):
 
     msg = ''
-    log = ''
+
     msg_txt_up = '{} è salita sopra la soglia di {}, ultimo prezzo {}\n'
     msg_txt_down = '{} è scesa sotto la soglia di {}, ultimo prezzo {}\n'
-    log_txt = '{} progresso: {} prezzo: {} variazione: {}\n'
+    log_columns_names = [' ', 'nome', 'progresso', 'prezzo', 'variazione']
+    log = []
 
     if stocks:
         stocks = get_stock_price(stocks)
@@ -97,7 +99,7 @@ def check_stocks(stocks):
             if stock_prefix == '+':
                 stock_limit = float(limit[1:])
                 progress = compute_progress(stock_price, stock_limit)
-                log += '+ '+log_txt.format(stock, progress, stock_price, var)
+                log.append(['+', stock, progress, stock_price, var])
                 if stock_price > stock_limit:
                     msg += msg_txt_up.format(stock, stock_limit, stock_price)
             else:
@@ -105,7 +107,7 @@ def check_stocks(stocks):
                 if stock_prefix == '-':
                     stock_limit = float(limit[1:])
                 progress = compute_progress(stock_price, stock_limit)
-                log += '- '+log_txt.format(stock, progress, stock_price, var)
+                log.append(['-', stock, progress, stock_price, var])
                 if stock_price < stock_limit:
                     msg += msg_txt_down.format(stock, stock_limit, stock_price)
 
@@ -113,16 +115,17 @@ def check_stocks(stocks):
         return'nessuna azione inserita!\n\n'
 
     if not msg:
-        return log + 'nessuna azione è scesa sotto la soglia\n\n'
+        return log + '\nnessuna azione è scesa sotto la soglia\n\n'
 
-    return msg + log
+    return msg + '\n' + format_pretty_table(log, log_columns_names) + '\n\n'
 
 
 def check_bonds(bonds):
 
     msg = ''
     log = ''
-    log_text = 'progresso {} : {} prezzo: {}\n'
+    log_columns_names = [' ', 'nome', 'progresso', 'prezzo']
+    log = []
 
     if bonds:
         for bond in bonds:
@@ -133,7 +136,7 @@ def check_bonds(bonds):
             if bond_prefix == '+':
                 bond_limit = float(bonds[bond][1][1:])
                 progress = compute_progress(bond_price, bond_limit)
-                log += '+ '+log_text.format(bond, progress, bond_price)
+                log.append(['+', bond, progress, bond_price])
                 if bond_price > bond_limit:
                     text = '{0} è salita sopra la soglia di {1}, ultimo prezzo {2}'
                     msg += text.format(bond, bonds[bond][1], bond_price) + '\n'
@@ -142,7 +145,7 @@ def check_bonds(bonds):
                 if bond_prefix == '-':
                     bond_limit = float(bonds[bond][1][1:])
                 progress = compute_progress(bond_price, bond_limit)
-                log += '- ' + log_text.format(bond, progress, bond_price)
+                log.append(['-', bond, progress, bond_price])
                 if bond_price < bond_limit:
                     text = '{0} è sceso sotto la soglia di {1}, ultimo prezzo {2}'
                     msg += text.format(bond, bonds[bond][1], bond_price) + '\n'
@@ -151,9 +154,9 @@ def check_bonds(bonds):
         return'nessuna obbligazione inserita!\n\n'
 
     if not msg:
-        return log + 'nessuna obbgligazione è scesa sotto la soglia\n\n'
+        return log + '\nnessuna obbgligazione è scesa sotto la soglia\n\n'
 
-    return msg + log
+    return msg + '\n' + format_pretty_table(log, log_columns_names)
 
 
 @click.group()

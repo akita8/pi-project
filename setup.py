@@ -7,7 +7,8 @@ setup(
     install_requires=[
         'Click',
         'Bs4',
-        'requests'
+        'requests',
+        'humanfriendly'
     ],
     entry_points='''
         [console_scripts]
