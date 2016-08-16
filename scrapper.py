@@ -84,7 +84,7 @@ def check_stocks(stocks):
 
     msg = ''
     log = ''
-    log_text ='+ progresso {} : {} prezzo: {}\n'
+    log_text ='progresso {} : {} prezzo: {}\n'
 
     if stocks:
         stocks = get_stock_price(stocks)
@@ -95,7 +95,7 @@ def check_stocks(stocks):
             if stock_prefix == '+':
                 stock_limit = float(limit[1:])
                 progress = compute_progress(stock_price, stock_limit)
-                log += log_text.format(stock, progress, stock_price)
+                log +='+ '+log_text.format(stock, progress, stock_price)
                 if stock_price > stock_limit:
                     text = '{0} è salita sopra la soglia di {1}, ultimo prezzo {2}'
                     msg += text.format(stock, stock_limit, stock_price) + '\n'
@@ -103,8 +103,8 @@ def check_stocks(stocks):
                 stock_limit = float(limit)
                 if stock_prefix == '-':
                     stock_limit = float(limit[1:])
-                    progress = compute_progress(stock_price, stock_limit)
-                log += log_text.format(stock, progress, stock_price)
+                progress = compute_progress(stock_price, stock_limit)
+                log += '- '+log_text.format(stock, progress, stock_price)
                 if stock_price < stock_limit:
                     text = '{0} è scesa sotto la soglia di {1}, ultimo prezzo {2}'
                     msg += text.format(stock, stock_limit, stock_price) + '\n'
@@ -122,7 +122,7 @@ def check_bonds(bonds):
 
     msg = ''
     log = ''
-    log_text ='+ progresso {} : {} prezzo: {}\n'
+    log_text ='progresso {} : {} prezzo: {}\n'
 
     if bonds:
         for bond in bonds:
@@ -133,7 +133,7 @@ def check_bonds(bonds):
             if bond_prefix == '+':
                 bond_limit = float(bonds[bond][1][1:])
                 progress = compute_progress(bond_price, bond_limit)
-                log += log_text.format(bond, progress, bond_price)
+                log += '+ '+log_text.format(bond, progress, bond_price)
                 if bond_price > bond_limit:
                     text = '{0} è salita sopra la soglia di {1}, ultimo prezzo {2}'
                     msg += text.format(bond, bonds[bond][1], bond_price) + '\n'
@@ -142,7 +142,7 @@ def check_bonds(bonds):
                 if bond_prefix == '-':
                     bond_limit = float(bonds[bond][1][1:])
                 progress = compute_progress(bond_price, bond_limit)
-                log += log_text.format(bond, progress, bond_price)
+                log += '- '+ log_text.format(bond, progress, bond_price)
                 if bond_price < bond_limit:
                     text = '{0} è sceso sotto la soglia di {1}, ultimo prezzo {2}'
                     msg += text.format(bond, bonds[bond][1], bond_price) + '\n'
