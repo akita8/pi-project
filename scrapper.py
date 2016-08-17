@@ -115,7 +115,8 @@ def check_stocks(stocks):
         return'nessuna azione inserita!\n\n'
 
     if not msg:
-        return log + '\nnessuna azione è scesa sotto la soglia\n\n'
+        no_msg = '\nnessuna azione è scesa sotto la soglia\n\n'
+        return format_pretty_table(log, log_columns_names) + no_msg
 
     return msg + '\n' + format_pretty_table(log, log_columns_names) + '\n\n'
 
@@ -154,7 +155,8 @@ def check_bonds(bonds):
         return'nessuna obbligazione inserita!\n\n'
 
     if not msg:
-        return log + '\nnessuna obbgligazione è scesa sotto la soglia\n\n'
+        no_msg = '\nnessuna obbgligazione è scesa sotto la soglia\n\n'
+        return format_pretty_table(log, log_columns_names) + no_msg
 
     return msg + '\n' + format_pretty_table(log, log_columns_names)
 
@@ -177,14 +179,14 @@ def get(only_one):
     '''attiva il programma'''
 
     if only_one == 'stock':
-        click.echo('aggiorno i prezzi delle azioni')
+        click.echo('aggiorno i prezzi delle azioni\n')
         click.echo(check_stocks(get_assets(STOCKS)))
 
     elif only_one == 'bond':
-        click.echo('aggiorno i prezzi delle obbligazioni')
+        click.echo('aggiorno i prezzi delle obbligazioni\n')
         click.echo(check_bonds(get_assets(BONDS)))
     else:
-        click.echo('aggiorno i prezzi di azioni e obbligazioni')
+        click.echo('aggiorno i prezzi di azioni e obbligazioni\n')
         msg = check_stocks(get_assets(STOCKS))
         msg += check_bonds(get_assets(BONDS))
         click.echo(msg)
