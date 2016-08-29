@@ -8,8 +8,8 @@ from random import randint
 from time import sleep
 from humanfriendly.tables import format_pretty_table
 
-# gestire il caso simbolo o isin sbagliato
-# gestire mancanza di connessione
+# have to handle wrong symbol
+# have to handle no connetion
 
 ROOT_FOLDER = os.path.abspath(os.path.dirname(__file__))
 BONDS = ROOT_FOLDER + '/bonds.csv'
@@ -18,11 +18,6 @@ STOCKS = ROOT_FOLDER + '/stocks.csv'
 
 def formatted(raw):
     return [el.strip('\n').split(';') for el in raw]
-
-
-def url_completion(url, inclusion):
-    seg = url.split('#')
-    return '{0}{1}{2}'.format(seg[0], inclusion, seg[1])
 
 
 def get_assets(fileloc):
@@ -41,9 +36,9 @@ def get_assets(fileloc):
 
 
 def get_bond_price(isin):
-    url = url_completion(
-        '''http://www.borsaitaliana.it/borsa/obbligazioni/mot/btp/scheda/#.html?lang=it''', isin.upper())
-    html = requests.get(url)
+    url = 'http://www.borsaitaliana.it/borsa/obbligazioni/mot/btp/scheda/'
+    url_end = '.html?lang=it'
+    html = requests.get(''.join([url, isin.upper(), url_end]))
     soup = BeautifulSoup(html.text, 'html.parser')
     try:
         return float(soup.find_all('td', limit=8)[7].text.replace(',', '.'))
@@ -57,9 +52,8 @@ def get_stock_price(stocks):
     symbol_str = ''
     for stock in stocks:
         symbol_str += '{}+'.format(stocks[stock][0])
-    url = url_completion(
-        'http://finance.yahoo.com/d/quotes.csv?s=#&f=l1p2', symbol_str[:-1])
-    prices = requests.get(url).text.split('\n')[:-1]
+    url = 'http://finance.yahoo.com/d/quotes.csv?s=#&f=l1p2'
+    prices = requests.get(url.replace('#', symbol_str)).text.split('\n')[:-1]
     raw = [x.split(',') for x in prices]
     polished = list(map((lambda y: [float(y[0]), y[1].replace('"', '')]), raw))
     cont = 0
@@ -127,6 +121,8 @@ def check_bonds(bonds):
     log = ''
     log_columns_names = [' ', 'nome', 'progresso', 'prezzo']
     log = []
+    text_up = '{0} è salita sopra la soglia di {1}, ultimo prezzo {2}\n'
+    text_down = '{0} è sceso sotto la soglia di {1}, ultimo prezzo {2}\n'
 
     if bonds:
         for bond in bonds:
@@ -139,8 +135,7 @@ def check_bonds(bonds):
                 progress = compute_progress(bond_price, bond_limit)
                 log.append(['+', bond, progress, bond_price])
                 if bond_price > bond_limit:
-                    text = '{0} è salita sopra la soglia di {1}, ultimo prezzo {2}'
-                    msg += text.format(bond, bonds[bond][1], bond_price) + '\n'
+                    msg += text_up.format(bond, bonds[bond][1], bond_price)
             else:
                 bond_limit = float(bonds[bond][1])
                 if bond_prefix == '-':
@@ -148,8 +143,7 @@ def check_bonds(bonds):
                 progress = compute_progress(bond_price, bond_limit)
                 log.append(['-', bond, progress, bond_price])
                 if bond_price < bond_limit:
-                    text = '{0} è sceso sotto la soglia di {1}, ultimo prezzo {2}'
-                    msg += text.format(bond, bonds[bond][1], bond_price) + '\n'
+                    msg += text_down.format(bond, bonds[bond][1], bond_price)
             sleep(randint(5, 10))
     else:
         return'nessuna obbligazione inserita!\n\n'
@@ -173,8 +167,10 @@ def cli():
 
 
 @cli.command()
-@click.option('--stock', 'only_one', flag_value='stock', help='controlla solo le azioni')
-@click.option('--bond', 'only_one', flag_value='bond', help='controlla solo le obbligazioni')
+@click.option('--stock', 'only_one', flag_value='stock',
+              help='controlla solo le azioni')
+@click.option('--bond', 'only_one', flag_value='bond',
+              help='controlla solo le obbligazioni')
 def get(only_one):
     '''attiva il programma'''
 
@@ -193,8 +189,10 @@ def get(only_one):
 
 
 @cli.command()
-@click.option('--bond', nargs=3, type=str, default=(), help='obbligazione : NOME ISIN SOGLIA')
-@click.option('--stock', nargs=3, type=str, default=(), help='azione : NOME SIMBOLO SOGLIA')
+@click.option('--bond', nargs=3, type=str, default=(),
+              help='obbligazione : NOME ISIN SOGLIA')
+@click.option('--stock', nargs=3, type=str, default=(),
+              help='azione : NOME SIMBOLO SOGLIA')
 def add(bond, stock):
     ''' aggiungi un azione o obbligazione'''
 
@@ -208,8 +206,10 @@ def add(bond, stock):
 
 @cli.command()
 @click.option('--mod', default='', help='modifica la soglia di notifica')
-@click.option('--bond', default='', help='NOME obbligazione da rimuovere o modificare')
-@click.option('--stock', default='', help='NOME azione da rimuovere o modificare')
+@click.option('--bond', default='',
+              help='NOME obbligazione da rimuovere o modificare')
+@click.option('--stock', default='',
+              help='NOME azione da rimuovere o modificare')
 def remove(mod, bond, stock):
     '''rimuovi un azione o obbligazione'''
 
@@ -237,7 +237,8 @@ def remove(mod, bond, stock):
                 else:
                     f.write('{0};{1};{2}\n'.format(*line))
     else:
-        if click.confirm('Vuoi davvero cancellare {}'.format(removed), default=False):
+        prompt = 'Vuoi davvero cancellare {}'
+        if click.confirm(prompt.format(removed), default=False):
 
             new = [el for el in formatted(temp) if el[0] != removed]
 
