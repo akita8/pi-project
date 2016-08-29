@@ -1,6 +1,7 @@
 import click
 import requests
 import os
+import datetime
 from collections import OrderedDict
 from os.path import isfile
 from bs4 import BeautifulSoup
@@ -14,6 +15,9 @@ from humanfriendly.tables import format_pretty_table
 ROOT_FOLDER = os.path.abspath(os.path.dirname(__file__))
 BONDS = ROOT_FOLDER + '/bonds.csv'
 STOCKS = ROOT_FOLDER + '/stocks.csv'
+INVESTED = 10000
+REPAYMENT = 100
+TAX = 0.125
 
 
 def formatted(raw):
@@ -35,13 +39,35 @@ def get_assets(fileloc):
     return assets
 
 
-def get_bond_price(isin):
+def get_bond_data(isin):
+    '''
+        data keys:
+        Prezzo ufficiale, Numero Contratti, Lotto Minimo, Min Oggi,
+        Valuta di negoziazione, Max Oggi, Valuta di liquidazione,
+        Min Anno, Data Ultima Cedola Pagata, Max Anno, Tasso Prossima Cedola,
+        Tipo Bond, Scadenza, Codice Isin, Apertura, Mercato, Volume Ultimo:,
+        Tipologia, Volume totale
+    '''
     url = 'http://www.borsaitaliana.it/borsa/obbligazioni/mot/btp/scheda/'
     url_end = '.html?lang=it'
     html = requests.get(''.join([url, isin.upper(), url_end]))
     soup = BeautifulSoup(html.text, 'html.parser')
     try:
-        return float(soup.find_all('td', limit=8)[7].text.replace(',', '.'))
+        raw_data = soup.find_all('td')
+        keys = [el.text for i, el in enumerate(raw_data)
+                if i > 5 and i < 44 and i % 2 == 0]
+        values = [el.text for i, el in enumerate(raw_data)
+                  if i > 5 and i < 44 and i % 2 != 0]
+        data = dict(zip(keys, values))
+        price = float(data['Prezzo ufficiale'].replace(',', '.'))
+        unpolished_date = data['Scadenza'].split('/')
+        year = int('20'+unpolished_date[2])
+        month = int(unpolished_date[1])
+        day = int(unpolished_date[0])
+        date = datetime.date(year, month, day)
+        max_year = data['Max Anno']
+        min_year = data['Min Anno']
+        return (price, date, max_year, min_year)
     except IndexError:
         print('isin sbagliato!: {}'.format(isin))
         return False
@@ -106,34 +132,51 @@ def check_stocks(stocks):
                     msg += msg_txt_down.format(stock, stock_limit, stock_price)
 
     else:
-        return'nessuna azione inserita!\n\n'
+        return'nessuna azione inserita!\n'
+
+    table = format_pretty_table(log, log_columns_names)
 
     if not msg:
-        no_msg = '\nnessuna azione è scesa sotto la soglia\n\n'
-        return format_pretty_table(log, log_columns_names) + no_msg
+        no_msg = 'nessuna azione è scesa sotto la soglia'
+        return '{}\n{}\n'.format(table, no_msg)
 
-    return msg + '\n' + format_pretty_table(log, log_columns_names) + '\n\n'
+    return '{}\n{}\n'.format(table, msg)
 
 
 def check_bonds(bonds):
 
     msg = ''
     log = ''
-    log_columns_names = [' ', 'nome', 'progresso', 'prezzo']
+    log_columns_names = [' ', 'nome', 'progresso', 'prezzo', 'max_y', 'min_y',
+                         'yield_y', 'yield']
     log = []
     text_up = '{0} è salita sopra la soglia di {1}, ultimo prezzo {2}\n'
     text_down = '{0} è sceso sotto la soglia di {1}, ultimo prezzo {2}\n'
 
     if bonds:
         for bond in bonds:
-            bond_price = get_bond_price(bonds[bond][0])
+            isin = bonds[bond][0]
+            bond_price, repayment_date, max_y, min_y = get_bond_data(isin)
             if not bond_price:
                 continue
+
+            gross_coupon = float(bond.split('-')[1].replace(',', '.'))/100
+            net_coupon = gross_coupon - gross_coupon*TAX
+            today = datetime.date.today()
+            day_to_repayment = (repayment_date-today).days
+            cumulative_coupon = (net_coupon/365.0)*day_to_repayment
+            cumulative_coupon *= INVESTED
+            repayment_diff = INVESTED - (INVESTED*(bond_price/100))
+            bond_yield = int(cumulative_coupon + repayment_diff)
+            annual_yield = round(bond_yield/(day_to_repayment/365.0), 2)
+
             bond_prefix = bonds[bond][1][:1]
             if bond_prefix == '+':
                 bond_limit = float(bonds[bond][1][1:])
                 progress = compute_progress(bond_price, bond_limit)
-                log.append(['+', bond, progress, bond_price])
+                log_data = ['+', bond, progress, bond_price, max_y, min_y,
+                            annual_yield, bond_yield]
+                log.append(log_data)
                 if bond_price > bond_limit:
                     msg += text_up.format(bond, bonds[bond][1], bond_price)
             else:
@@ -141,18 +184,23 @@ def check_bonds(bonds):
                 if bond_prefix == '-':
                     bond_limit = float(bonds[bond][1][1:])
                 progress = compute_progress(bond_price, bond_limit)
-                log.append(['-', bond, progress, bond_price])
+                log_data = ['-', bond, progress, bond_price, max_y, min_y,
+                            annual_yield, bond_yield]
+                log.append(log_data)
                 if bond_price < bond_limit:
                     msg += text_down.format(bond, bonds[bond][1], bond_price)
-            sleep(randint(5, 10))
+
+            sleep(randint(5, 7))
     else:
-        return'nessuna obbligazione inserita!\n\n'
+        return'nessuna obbligazione inserita!\n'
+
+    table = format_pretty_table(log, log_columns_names)
 
     if not msg:
-        no_msg = '\nnessuna obbgligazione è scesa sotto la soglia\n\n'
-        return format_pretty_table(log, log_columns_names) + no_msg
+        no_msg = 'nessuna obbgligazione è scesa sotto la soglia'
+        return '{}\n{}\n'.format(table, no_msg)
 
-    return msg + '\n' + format_pretty_table(log, log_columns_names)
+    return '{}\n{}\n'.format(table, msg)
 
 
 @click.group()
@@ -190,12 +238,12 @@ def get(only_one):
 
 @cli.command()
 @click.option('--bond', nargs=3, type=str, default=(),
-              help='obbligazione : NOME ISIN SOGLIA')
+              help='obbligazione : NOME-CEDOLA ISIN SOGLIA')
 @click.option('--stock', nargs=3, type=str, default=(),
               help='azione : NOME SIMBOLO SOGLIA')
 def add(bond, stock):
     ''' aggiungi un azione o obbligazione'''
-
+    # devo validare l input
     if bond:
         with open(BONDS, 'a') as f:
             f.write('{0};{1};{2}\n'.format(*bond))
