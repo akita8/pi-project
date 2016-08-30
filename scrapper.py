@@ -1,3 +1,4 @@
+# import csv
 import click
 import requests
 import os
@@ -37,6 +38,21 @@ def get_assets(fileloc):
     else:
         return None  # da cambiare
     return assets
+
+
+def get_treasury_data():
+    url = 'http://www.wsj.com/mdc/public/page/2_3020-treasury.html'
+    try:
+        html = requests.get(url)
+    except requests.exceptions.ConnectionError:
+        raise SystemExit
+    soup = BeautifulSoup(html.text, 'html.parser')
+    td_tags = soup.find_all('td')
+    raw = [el.text for el in td_tags[8:]]
+    raw = raw[:raw.index('Maturity')]
+    sub_lists = [raw[i:i+6] for i in range(0, len(raw), 6)]
+    polished_dict = {el[0]: el[1:] for el in sub_lists}
+    return polished_dict
 
 
 def get_bond_data(isin):
@@ -107,7 +123,7 @@ def compute_progress(price, limit):  # da finire
     return '{}%'.format(str(progress * 100)[:4])
 
 
-def check_stocks(stocks):
+def check_stocks(stocks, cron=False):
 
     msg = ''
 
@@ -146,13 +162,15 @@ def check_stocks(stocks):
     table = format_pretty_table(log, log_columns_names)
 
     if not msg:
-        no_msg = 'nessuna azione è scesa sotto la soglia'
-        return '{}\n{}\n'.format(table, no_msg)
+        msg += 'nessuna azione è scesa sotto la soglia'
 
+    if cron:
+        log.insert(0, log_columns_names)
+        return(log, msg)
     return '{}\n{}\n'.format(table, msg)
 
 
-def check_bonds(bonds):
+def check_bonds(bonds, cron=False):
 
     msg = ''
     log = ''
@@ -209,10 +227,19 @@ def check_bonds(bonds):
     table = format_pretty_table(log, log_columns_names)
 
     if not msg:
-        no_msg = 'nessuna obbgligazione è scesa sotto la soglia'
-        return '{}\n{}\n'.format(table, no_msg)
+        msg += 'nessuna obbgligazione è scesa sotto la soglia'
 
+    if cron:
+        log.insert(0, log_columns_names)
+        return(log, msg)
     return '{}\n{}\n'.format(table, msg)
+
+
+def cron_get(choice):
+    if choice == 'stock':
+        return check_stocks(get_assets(STOCKS), cron=True)
+    elif choice == 'bond':
+        return check_bonds(get_assets(BONDS), cron=True)
 
 
 @click.group()
