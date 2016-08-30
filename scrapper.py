@@ -50,15 +50,19 @@ def get_bond_data(isin):
     '''
     url = 'http://www.borsaitaliana.it/borsa/obbligazioni/mot/btp/scheda/'
     url_end = '.html?lang=it'
-    html = requests.get(''.join([url, isin.upper(), url_end]))
-    soup = BeautifulSoup(html.text, 'html.parser')
     try:
-        raw_data = soup.find_all('td')
-        keys = [el.text for i, el in enumerate(raw_data)
-                if i > 5 and i < 44 and i % 2 == 0]
-        values = [el.text for i, el in enumerate(raw_data)
-                  if i > 5 and i < 44 and i % 2 != 0]
-        data = dict(zip(keys, values))
+        html = requests.get(''.join([url, isin.upper(), url_end]))
+    except requests.exceptions.ConnectionError:
+        raise SystemExit
+    soup = BeautifulSoup(html.text, 'html.parser')
+
+    raw_data = soup.find_all('td')
+    keys = [el.text for i, el in enumerate(raw_data)
+            if i > 5 and i < 44 and i % 2 == 0]
+    values = [el.text for i, el in enumerate(raw_data)
+              if i > 5 and i < 44 and i % 2 != 0]
+    data = dict(zip(keys, values))
+    try:
         price = float(data['Prezzo ufficiale'].replace(',', '.'))
         unpolished_date = data['Scadenza'].split('/')
         year = int('20'+unpolished_date[2])
@@ -68,19 +72,22 @@ def get_bond_data(isin):
         max_year = data['Max Anno']
         min_year = data['Min Anno']
         return (price, date, max_year, min_year)
-    except IndexError:
-        print('isin sbagliato!: {}'.format(isin))
-        return False
+    except KeyError:
+        print('ATTENZIONE isin sbagliato: {}\n'.format(isin))
+        return (None, None, None, None)
 
 
-def get_stock_price(stocks):
+def get_stock_data(stocks):
 
     symbol_str = ''
     for stock in stocks:
         symbol_str += '{}+'.format(stocks[stock][0])
     url = 'http://finance.yahoo.com/d/quotes.csv?s=#&f=l1p2'
-    prices = requests.get(url.replace('#', symbol_str)).text.split('\n')[:-1]
-    raw = [x.split(',') for x in prices]
+    try:
+        prices = requests.get(url.replace('#', symbol_str)).text.split('\n')
+    except requests.exceptions.ConnectionError:
+        raise SystemExit
+    raw = [x.split(',') for x in prices[:-1]]
     polished = list(map((lambda y: [float(y[0]), y[1].replace('"', '')]), raw))
     cont = 0
     for stock in stocks:
@@ -110,11 +117,13 @@ def check_stocks(stocks):
     log = []
 
     if stocks:
-        stocks = get_stock_price(stocks)
+        stocks = get_stock_data(stocks)
         for stock in stocks:
+
             limit = stocks[stock][1]
             stock_price = stocks[stock][2]
             var = stocks[stock][3]
+
             stock_prefix = limit[:1]
             if stock_prefix == '+':
                 stock_limit = float(limit[1:])
@@ -155,8 +164,10 @@ def check_bonds(bonds):
 
     if bonds:
         for bond in bonds:
+
             isin = bonds[bond][0]
             bond_price, repayment_date, max_y, min_y = get_bond_data(isin)
+
             if not bond_price:
                 continue
 
@@ -171,6 +182,7 @@ def check_bonds(bonds):
             annual_yield = round(bond_yield/(day_to_repayment/365.0), 2)
 
             bond_prefix = bonds[bond][1][:1]
+
             if bond_prefix == '+':
                 bond_limit = float(bonds[bond][1][1:])
                 progress = compute_progress(bond_price, bond_limit)
@@ -221,19 +233,21 @@ def cli():
               help='controlla solo le obbligazioni')
 def get(only_one):
     '''attiva il programma'''
+    try:
+        if only_one == 'stock':
+            click.echo('aggiorno i prezzi delle azioni\n')
+            click.echo(check_stocks(get_assets(STOCKS)))
 
-    if only_one == 'stock':
-        click.echo('aggiorno i prezzi delle azioni\n')
-        click.echo(check_stocks(get_assets(STOCKS)))
-
-    elif only_one == 'bond':
-        click.echo('aggiorno i prezzi delle obbligazioni\n')
-        click.echo(check_bonds(get_assets(BONDS)))
-    else:
-        click.echo('aggiorno i prezzi di azioni e obbligazioni\n')
-        msg = check_stocks(get_assets(STOCKS))
-        msg += check_bonds(get_assets(BONDS))
-        click.echo(msg)
+        elif only_one == 'bond':
+            click.echo('aggiorno i prezzi delle obbligazioni\n')
+            click.echo(check_bonds(get_assets(BONDS)))
+        else:
+            click.echo('aggiorno i prezzi di azioni e obbligazioni\n')
+            msg = check_stocks(get_assets(STOCKS))
+            msg += check_bonds(get_assets(BONDS))
+            click.echo(msg)
+    except SystemExit:
+        click.echo('ATTENZIONE nessuna connessione internet')
 
 
 @cli.command()
