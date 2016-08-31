@@ -151,7 +151,6 @@ def check_email():
                 if 'scrapper' in subject.lower():
                     parse_command(cmd)
     conn.logout()
-    conn.close()
 
 
 if __name__ == '__main__':
