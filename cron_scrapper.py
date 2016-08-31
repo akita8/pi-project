@@ -83,8 +83,9 @@ def html_content(content, a_type):
             if not header:
                 # variazione
                 if i == 4 and a_type == 'stock':
-                    var = cell[:-1]  # removing the % symbol
-                    color = green_or_red(var)
+                    if cell != 'N\A':
+                        var = cell[:-1]  # removing the % symbol
+                        color = green_or_red(var)
                 # yield and yield_y
                 elif (i == 6 or i == 7) and a_type == 'bond':
                     color = green_or_red(cell)
