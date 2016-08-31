@@ -1,6 +1,8 @@
+import datetime
 import imaplib
 import smtplib
 import scrapper as scr
+from subprocess import Popen, PIPE
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email import message_from_bytes
@@ -13,42 +15,54 @@ with open(CREDENTIALS, 'r') as f:
     rec = cred[1]
     psw = f.readline().strip('\n')
 
+today = datetime.date.today()
+
 
 def green_or_red(num):
 
     if float(num) > 0:
         return 'ForestGreen'
-    return 'Crimson '
+    return 'Crimson'
 
 
-def send_email(asset_type):
+def send_email(message):
+
+    mail = smtplib.SMTP('smtp.gmail.com', 587)
+    mail.ehlo()
+    mail.starttls()
+    mail.login(sender, psw)
+    mail.sendmail(sender, rec, message.as_string())
+    mail.quit()
+
+
+def text_email(cmd, opt, text):
+    msg = MIMEText(text)
+    msg['Subject'] = "scrapper {} {} {}".format(cmd, opt, today)
+    msg['From'] = sender
+    msg['To'] = rec
+    send_email(msg)
+
+
+def html_email(asset_type):
 
     msg = MIMEMultipart('alternative')
-    msg['Subject'] = "test"
+    msg['Subject'] = "scrapper get {} {}".format(asset_type, today)
     msg['From'] = sender
     msg['To'] = rec
 
     text = ""
-    html = html_content(asset_type)
+    html = html_content(scr.cron_get(asset_type), asset_type)
 
     part1 = MIMEText(text, 'plain')
     part2 = MIMEText(html, 'html')
     msg.attach(part1)
     msg.attach(part2)
-    mail = smtplib.SMTP('smtp.gmail.com', 587)
-
-    mail.ehlo()
-
-    mail.starttls()
-
-    mail.login(sender, psw)
-    mail.sendmail(sender, rec, msg.as_string())
-    mail.quit()
+    send_email(msg)
 
 
-def html_content(a_type):
+def html_content(content, a_type):
 
-    table, msg = scr.cron_get(a_type)
+    table, msg = content
 
     style = '''"font-family:Rockwell, serif;font-size:14px;font-weight:normal;
                padding:10px 5px;border-style:solid;border-width:{}px;
@@ -97,18 +111,31 @@ def html_content(a_type):
 
 
 def parse_command(command):
-    words = command.strip('\r\n').split(' ')
-    if words[0] == 'get':
-        if 'stock' in words[1]:
-            send_email('stock')
-        elif 'bond' in words[1]:
-            send_email('bond')
+    words = command.split('|')[0].split(' ')
+    stmt = words[0].lower()
+    options = words[1:]
+    if stmt == 'get':
+        s = 'stock'
+        b = 'bond'
+        i = 'ip'
+        first_option = options[0].lower()
+        if s in first_option:      # stock
+            html_email(s)
+        elif b in first_option:    # bond
+            html_email(b)
+        elif i in first_option:    # ip
+            cmd = ['hostname', '-I']
+            p = Popen(cmd, stdout=PIPE)
+            out = p.communicate()
+            raw = str(out[0])
+            ip = raw.strip('\n').split(' ')[0][2:]
+            text_email(stmt, i, ip)
 
 
 def check_email():
     conn = imaplib.IMAP4_SSL("imap.gmail.com", 993)
     conn.login(sender, psw)
-    conn.select()  # select a mailbox
+    conn.select()  # select a mailbox, default INBOX
 
     typ, data = conn.search(None, 'UNSEEN')
 

@@ -11,7 +11,6 @@ from time import sleep
 from humanfriendly.tables import format_pretty_table
 
 # have to handle wrong symbol
-# have to handle no connetion
 
 ROOT_FOLDER = os.path.abspath(os.path.dirname(__file__))
 BONDS = ROOT_FOLDER + '/bonds.csv'
