@@ -106,24 +106,25 @@ def parse_command(command):
 
 
 def check_email():
-    with imaplib.IMAP4_SSL("imap.gmail.com", 993) as conn:
-        conn.login(sender, psw)
-        conn.select()  # select a mailbox
+    conn = imaplib.IMAP4_SSL("imap.gmail.com", 993)
+    conn.login(sender, psw)
+    conn.select()  # select a mailbox
 
-        typ, data = conn.search(None, 'UNSEEN')
+    typ, data = conn.search(None, 'UNSEEN')
 
-        for num in data[0].split():
-            typ, msg_data = conn.fetch(num, '(RFC822)')
-            for response_part in msg_data:
+    for num in data[0].split():
+        typ, msg_data = conn.fetch(num, '(RFC822)')
+        for response_part in msg_data:
 
-                if isinstance(response_part, tuple):
-                    msg = message_from_bytes(response_part[1])
-                    subject = msg['subject']
-                    payload = msg.get_payload()
-                    cmd = payload[0].get_payload(decode=True).decode('utf-8')
-                    if 'scrapper' in subject.lower():
-                        parse_command(cmd)
-        conn.logout()
+            if isinstance(response_part, tuple):
+                msg = message_from_bytes(response_part[1])
+                subject = msg['subject']
+                payload = msg.get_payload()
+                cmd = payload[0].get_payload(decode=True).decode('utf-8')
+                if 'scrapper' in subject.lower():
+                    parse_command(cmd)
+    conn.logout()
+    conn.close()
 
 
 if __name__ == '__main__':
