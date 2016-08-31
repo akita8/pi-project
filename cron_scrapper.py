@@ -111,14 +111,18 @@ def html_content(content, a_type):
 
 
 def parse_command(command):
-    words = command.split('|')[0].split(' ')
+    end_of_cmd = '|'
+    if end_of_cmd not in command:
+        text_email('ERRORE: ultimo comando', '', ' | non presente')
+        return
+    words = command.split(end_of_cmd)[0].split(' ')
     stmt = words[0].lower()
     options = words[1:]
     s = 'stock'
     b = 'bond'
     i = 'ip'
-    success_msg = 'COMANDO ESEGUITO: {}'.format(''.join(words))
-    failure_msg = 'COMAND FALLITO: {}'.format(''.join(words))
+    success_msg = 'COMANDO ESEGUITO: {}'.format(' '.join(words))
+    failure_msg = 'COMAND FALLITO: {}'.format(' '.join(words))
 
     if stmt == 'get':
         first_option = options[0].lower()
@@ -149,6 +153,31 @@ def parse_command(command):
                     text_email(stmt, b, success_msg)
         except IndexError:
             text_email(stmt, first_option, failure_msg)
+
+    elif stmt == 'remove':
+        removed = options[1]
+        if s in first_option:      # stock
+            selected = scr.STOCKS
+            with open(selected, 'r') as f:
+                header = f.readline()
+                temp = f.readlines()
+        elif b in first_option:    # bond
+            selected = scr.BONDS
+            with open(selected, 'r') as f:
+                header = f.readline()
+                temp = f.readlines()
+        new = [el for el in scr.formatted(temp) if el[0] != removed]
+        with open(selected, 'w') as f:
+            f.write(header)
+            for line in new:
+                f.write('{0};{1};{2}\n'.format(*line))
+        text_email(stmt, selected, success_msg)
+
+    elif stmt == 'show':
+        with open(scr.BONDS, 'r') as f, open(scr.STOCKS, 'r') as d:
+            b = f.read().replace(';', ' ')
+            s = d.read().replace(';', ' ')
+            text_email(stmt, '', '{}\n{}'.format(b, s))
 
 
 def check_email():
