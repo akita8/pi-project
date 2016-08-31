@@ -303,14 +303,14 @@ def remove(mod, bond, stock):
 
     if bond:
         selected = BONDS
-        removed = bond
+        removed = bond.lower()
         with open(BONDS, 'r') as f:
             header = f.readline()
             temp = f.readlines()
 
     if stock:
         selected = STOCKS
-        removed = stock
+        removed = stock.lower()
         with open(STOCKS, 'r') as f:
             header = f.readline()
             temp = f.readlines()
@@ -328,7 +328,7 @@ def remove(mod, bond, stock):
         prompt = 'Vuoi davvero cancellare {}'
         if click.confirm(prompt.format(removed), default=False):
 
-            new = [el for el in formatted(temp) if el[0] != removed]
+            new = [el for el in formatted(temp) if el[0].lower() != removed]
 
             with open(selected, 'w') as f:
                 f.write(header)

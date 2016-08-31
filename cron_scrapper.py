@@ -43,15 +43,14 @@ def text_email(cmd, opt, text):
     send_email(msg)
 
 
-def html_email(asset_type):
+def html_email(cmd, html):
 
     msg = MIMEMultipart('alternative')
-    msg['Subject'] = "scrapper get {} {}".format(asset_type, today)
+    msg['Subject'] = "scrapper {} {}".format(cmd, today)
     msg['From'] = sender
     msg['To'] = rec
 
     text = ""
-    html = html_content(scr.cron_get(asset_type), asset_type)
 
     part1 = MIMEText(text, 'plain')
     part2 = MIMEText(html, 'html')
@@ -104,8 +103,9 @@ def html_content(content, a_type):
                    font-size:14px;color:black">{}</p>'''
     html_msg = ''
 
-    for m in msg.split('\n'):
-        html_msg += paragraph.format(m)
+    if msg:
+        for m in msg.split('\n'):
+            html_msg += paragraph.format(m)
 
     return ''.join([prefix, html_msg, html_table, suffix])
 
@@ -127,9 +127,9 @@ def parse_command(command):
     if stmt == 'get':
         first_option = options[0].lower()
         if s in first_option:      # stock
-            html_email(s)
+            html_email(' '.join([stmt, s]), html_content(scr.cron_get(s), s))
         elif b in first_option:    # bond
-            html_email(b)
+            html_email(' '.join([stmt, b]), html_content(scr.cron_get(b), b))
         elif i in first_option:    # ip
             cmd = ['hostname', '-I']
             p = Popen(cmd, stdout=PIPE)
@@ -155,7 +155,8 @@ def parse_command(command):
             text_email(stmt, first_option, failure_msg)
 
     elif stmt == 'remove':
-        removed = options[1]
+        first_option = options[0].lower()
+        removed = options[1].lower()
         if s in first_option:      # stock
             selected = scr.STOCKS
             with open(selected, 'r') as f:
@@ -166,7 +167,7 @@ def parse_command(command):
             with open(selected, 'r') as f:
                 header = f.readline()
                 temp = f.readlines()
-        new = [el for el in scr.formatted(temp) if el[0] != removed]
+        new = [el for el in scr.formatted(temp) if el[0].lower() != removed]
         with open(selected, 'w') as f:
             f.write(header)
             for line in new:
@@ -175,9 +176,12 @@ def parse_command(command):
 
     elif stmt == 'show':
         with open(scr.BONDS, 'r') as f, open(scr.STOCKS, 'r') as d:
-            b = f.read().replace(';', ' ')
-            s = d.read().replace(';', ' ')
-            text_email(stmt, '', '{}\n{}'.format(b, s))
+            f.readline()
+            d.readline()
+            table = [['nome', 'isin/simbolo', 'soglia']]
+            table.extend([el.split(';') for el in f.readlines()])
+            table.extend([el.split(';') for el in d.readlines()])
+            html_email('show', (table, ''))
 
 
 def check_email():
