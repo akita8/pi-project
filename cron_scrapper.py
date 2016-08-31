@@ -114,10 +114,13 @@ def parse_command(command):
     words = command.split('|')[0].split(' ')
     stmt = words[0].lower()
     options = words[1:]
+    s = 'stock'
+    b = 'bond'
+    i = 'ip'
+    success_msg = 'COMANDO ESEGUITO: {}'.format(''.join(words))
+    failure_msg = 'COMAND FALLITO: {}'.format(''.join(words))
+
     if stmt == 'get':
-        s = 'stock'
-        b = 'bond'
-        i = 'ip'
         first_option = options[0].lower()
         if s in first_option:      # stock
             html_email(s)
@@ -130,6 +133,22 @@ def parse_command(command):
             raw = str(out[0])
             ip = raw.strip('\n').split(' ')[0][2:]
             text_email(stmt, i, ip)
+
+    elif stmt == 'add':
+        first_option = options[0].lower()
+        try:
+            if s in first_option:      # stock
+                with open(scr.STOCKS, 'a') as f:
+                    stock = options[1:]
+                    f.write('{0};{1};{2}\n'.format(*stock))
+                    text_email(stmt, s, success_msg)
+            elif b in first_option:    # bond
+                with open(scr.BONDS, 'a') as f:
+                    bond = options[1:]
+                    f.write('{0};{1};{2}\n'.format(*bond))
+                    text_email(stmt, b, success_msg)
+        except IndexError:
+            text_email(stmt, first_option, failure_msg)
 
 
 def check_email():
