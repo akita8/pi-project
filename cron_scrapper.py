@@ -181,7 +181,7 @@ def parse_command(command):
             table = [['nome', 'isin/simbolo', 'soglia']]
             table.extend([el.split(';') for el in f.readlines()])
             table.extend([el.split(';') for el in d.readlines()])
-            html_email('show', (table, ''))
+            html_email('show', html_content((table, None), None))
 
 
 def check_email():
