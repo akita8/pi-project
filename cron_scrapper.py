@@ -2,6 +2,7 @@ import datetime
 import imaplib
 import smtplib
 import scrapper as scr
+from socket import gaierror
 from subprocess import Popen, PIPE
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
@@ -186,7 +187,10 @@ def parse_command(command):
 
 
 def check_email():
-    conn = imaplib.IMAP4_SSL("imap.gmail.com", 993)
+    try:
+        conn = imaplib.IMAP4_SSL("imap.gmail.com", 993)
+    except gaierror:
+        raise SystemExit
     conn.login(sender, psw)
     conn.select()  # select a mailbox, default INBOX
 
@@ -207,4 +211,7 @@ def check_email():
 
 
 if __name__ == '__main__':
-    check_email()
+    try:
+        check_email()
+    except SystemExit:
+        pass
