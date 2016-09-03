@@ -1,4 +1,5 @@
 # import csv
+import codecs
 import click
 import requests
 import os
@@ -26,7 +27,7 @@ def formatted(raw):
 
 def get_assets(fileloc):
 
-    with open(fileloc, 'r') as f:
+    with codecs.open(fileloc, 'r', encoding='utf-8') as f:
         f.readline()
         temp = f.readlines()
 
