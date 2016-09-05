@@ -29,8 +29,8 @@ def cli(ctx):
               help='controlla solo le obbligazioni')
 def get(forced, only_one):
     '''attiva il programma'''
-    stock_columns_names = [' ', 'nome', 'progresso', 'prezzo', 'variazione']
-    bond_columns_names = [' ', 'nome', 'progresso', 'prezzo', 'max_y', 'min_y',
+    stock_columns_names = ['soglia', 'nome', 'progresso', 'prezzo', 'variazione']
+    bond_columns_names = ['soglia', 'nome', 'progresso', 'prezzo', 'max_y', 'min_y',
                           'yield_y', 'yield']
 
     if forced:
@@ -45,8 +45,9 @@ def get(forced, only_one):
         notification_b = check_thresholds(bonds)
 
         if notification_s is not None:
-            content_s = [[s.threshold[0], s.name, s.progress, s.price,
+            content_s = [[s.threshold, s.name.lower(), s.progress, s.price,
                           s.variation] for s in stocks]
+            content_s.sort(key=lambda x: x[1])
             pretty_s = format_pretty_table(content_s, stock_columns_names)
             text_s = '{}\n{}\n\n'.format(notification_s.format('azione'),
                                          pretty_s)
@@ -54,8 +55,11 @@ def get(forced, only_one):
             text_s = '\nATTENZIONE nessuna azione inserita nel database'
 
         if notification_b is not None:
-            content_b = [[b.threshold[0], b.name, b.progress, b.price, b.max_y,
-                          b.min_y, b.yield_y, b.yield_tot] for b in bonds]
+            raw_content_b = [[b.threshold, b.name, b.progress, b.price,
+                              b.max_y, b.min_y, b.yield_y, b.yield_tot,
+                              b.maturity] for b in bonds]
+            raw_content_b.sort(key=lambda x: x[-1])
+            content_b = [line[:-1] for line in raw_content_b]
             pretty_b = format_pretty_table(content_b, bond_columns_names)
             text_b = '{}\n{}\n\n'.format(notification_b.format('obbligazione'),
                                          pretty_b)
