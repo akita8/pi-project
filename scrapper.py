@@ -1,280 +1,75 @@
-# import csv
-import codecs
 import click
-import requests
-import os
-import datetime
-from collections import OrderedDict
+from data.const import Const
+from data.database import session, init_db
+from data.models import Bond, Stock
+from data.processing import update_db, check_thresholds
+from sqlalchemy.exc import IntegrityError
 from os.path import isfile
-from bs4 import BeautifulSoup
-from random import randint
-from time import sleep
 from humanfriendly.tables import format_pretty_table
 
-# have to handle wrong symbol
 
-ROOT_FOLDER = os.path.abspath(os.path.dirname(__file__))
-BONDS = ROOT_FOLDER + '/bonds.csv'
-STOCKS = ROOT_FOLDER + '/stocks.csv'
-INVESTED = 10000
-REPAYMENT = 100
-TAX = 0.125
-
-
-def formatted(raw):
-    return [el.strip('\n').split(';') for el in raw]
-
-
-def get_assets(fileloc):
-
-    with codecs.open(fileloc, 'r', encoding='utf-8') as f:
-        f.readline()
-        temp = f.readlines()
-
-    if temp:
-        assets = OrderedDict()
-        for line in formatted(temp):
-            assets[line[0]] = [line[1], line[2]]
-    else:
-        return None  # da cambiare
-    return assets
-
-
-def get_treasury_data():
-    url = 'http://www.wsj.com/mdc/public/page/2_3020-treasury.html'
-    try:
-        html = requests.get(url)
-    except requests.exceptions.ConnectionError:
-        raise SystemExit
-    soup = BeautifulSoup(html.text, 'html.parser')
-    td_tags = soup.find_all('td')
-    raw = [el.text for el in td_tags[8:]]
-    raw = raw[:raw.index('Maturity')]
-    sub_lists = [raw[i:i+6] for i in range(0, len(raw), 6)]
-    polished_dict = {el[0]: el[1:] for el in sub_lists}
-    return polished_dict
-
-
-def get_bond_data(isin):
-    '''
-        data keys:
-        Prezzo ufficiale, Numero Contratti, Lotto Minimo, Min Oggi,
-        Valuta di negoziazione, Max Oggi, Valuta di liquidazione,
-        Min Anno, Data Ultima Cedola Pagata, Max Anno, Tasso Prossima Cedola,
-        Tipo Bond, Scadenza, Codice Isin, Apertura, Mercato, Volume Ultimo:,
-        Tipologia, Volume totale
-    '''
-    url = 'http://www.borsaitaliana.it/borsa/obbligazioni/mot/btp/scheda/'
-    url_end = '.html?lang=it'
-    try:
-        html = requests.get(''.join([url, isin.upper(), url_end]))
-    except requests.exceptions.ConnectionError:
-        raise SystemExit
-    soup = BeautifulSoup(html.text, 'html.parser')
-
-    raw_data = soup.find_all('td')
-    keys = [el.text for i, el in enumerate(raw_data)
-            if i > 5 and i < 44 and i % 2 == 0]
-    values = [el.text for i, el in enumerate(raw_data)
-              if i > 5 and i < 44 and i % 2 != 0]
-    data = dict(zip(keys, values))
-    try:
-        price = float(data['Prezzo ufficiale'].replace(',', '.'))
-        unpolished_date = data['Scadenza'].split('/')
-        year = int('20'+unpolished_date[2])
-        month = int(unpolished_date[1])
-        day = int(unpolished_date[0])
-        date = datetime.date(year, month, day)
-        max_year = data['Max Anno']
-        min_year = data['Min Anno']
-        return (price, date, max_year, min_year)
-    except KeyError:
-        print('ATTENZIONE isin sbagliato: {}\n'.format(isin))
-        return (None, None, None, None)
-
-
-def get_stock_data(stocks):
-
-    symbol_str = ''
-    for stock in stocks:
-        symbol_str += '{}+'.format(stocks[stock][0])
-    url = 'http://finance.yahoo.com/d/quotes.csv?s=#&f=l1p2'
-    try:
-        prices = requests.get(url.replace('#', symbol_str)).text.split('\n')
-    except requests.exceptions.ConnectionError:
-        raise SystemExit
-    raw = [x.split(',') for x in prices[:-1]]
-    polished = list(map((lambda y: [float(y[0]), y[1].replace('"', '')]), raw))
-    cont = 0
-    for stock in stocks:
-        stocks[stock].extend(polished[cont])
-        cont += 1
-    return stocks
-
-
-def compute_progress(price, limit):  # da finire
-
-    if max(price, limit) == limit:  # price<limit
-        gap = limit - price
-        progress = gap / price
-    else:  # limit<price
-        gap = price - limit
-        progress = gap / price
-    return '{}%'.format(str(progress * 100)[:4])
-
-
-def check_stocks(stocks, cron=False):
-
-    msg = ''
-
-    msg_txt_up = '{} è salita sopra la soglia di {}, ultimo prezzo {}\n'
-    msg_txt_down = '{} è scesa sotto la soglia di {}, ultimo prezzo {}\n'
-    log_columns_names = [' ', 'nome', 'progresso', 'prezzo', 'variazione']
-    log = []
-
-    if stocks:
-        stocks = get_stock_data(stocks)
-        for stock in stocks:
-
-            limit = stocks[stock][1]
-            stock_price = stocks[stock][2]
-            var = stocks[stock][3]
-
-            stock_prefix = limit[:1]
-            if stock_prefix == '+':
-                stock_limit = float(limit[1:])
-                progress = compute_progress(stock_price, stock_limit)
-                log.append(['+', stock, progress, stock_price, var])
-                if stock_price > stock_limit:
-                    msg += msg_txt_up.format(stock, stock_limit, stock_price)
-            else:
-                stock_limit = float(limit)
-                if stock_prefix == '-':
-                    stock_limit = float(limit[1:])
-                progress = compute_progress(stock_price, stock_limit)
-                log.append(['-', stock, progress, stock_price, var])
-                if stock_price < stock_limit:
-                    msg += msg_txt_down.format(stock, stock_limit, stock_price)
-
-    else:
-        return'nessuna azione inserita!\n'
-
-    table = format_pretty_table(log, log_columns_names)
-
-    if not msg:
-        msg += 'nessuna azione è scesa sotto la soglia'
-
-    if cron:
-        log.insert(0, log_columns_names)
-        return(log, msg)
-    return '{}\n{}\n'.format(table, msg)
-
-
-def check_bonds(bonds, cron=False):
-
-    msg = ''
-    log = ''
-    log_columns_names = [' ', 'nome', 'progresso', 'prezzo', 'max_y', 'min_y',
-                         'yield_y', 'yield']
-    log = []
-    text_up = '{0} è salita sopra la soglia di {1}, ultimo prezzo {2}\n'
-    text_down = '{0} è sceso sotto la soglia di {1}, ultimo prezzo {2}\n'
-
-    if bonds:
-        for bond in bonds:
-
-            isin = bonds[bond][0]
-            bond_price, repayment_date, max_y, min_y = get_bond_data(isin)
-
-            if not bond_price:
-                continue
-
-            gross_coupon = float(bond.split('-')[1].replace(',', '.'))/100
-            net_coupon = gross_coupon - gross_coupon*TAX
-            today = datetime.date.today()
-            day_to_repayment = (repayment_date-today).days
-            cumulative_coupon = (net_coupon/365.0)*day_to_repayment
-            cumulative_coupon *= INVESTED
-            repayment_diff = INVESTED - (INVESTED*(bond_price/100))
-            bond_yield = int(cumulative_coupon + repayment_diff)
-            annual_yield = round(bond_yield/(day_to_repayment/365.0), 2)
-
-            bond_prefix = bonds[bond][1][:1]
-
-            if bond_prefix == '+':
-                bond_limit = float(bonds[bond][1][1:])
-                progress = compute_progress(bond_price, bond_limit)
-                log_data = ['+', bond, progress, bond_price, max_y, min_y,
-                            annual_yield, bond_yield]
-                log.append(log_data)
-                if bond_price > bond_limit:
-                    msg += text_up.format(bond, bonds[bond][1], bond_price)
-            else:
-                bond_limit = float(bonds[bond][1])
-                if bond_prefix == '-':
-                    bond_limit = float(bonds[bond][1][1:])
-                progress = compute_progress(bond_price, bond_limit)
-                log_data = ['-', bond, progress, bond_price, max_y, min_y,
-                            annual_yield, bond_yield]
-                log.append(log_data)
-                if bond_price < bond_limit:
-                    msg += text_down.format(bond, bonds[bond][1], bond_price)
-
-            sleep(randint(5, 7))
-    else:
-        return'nessuna obbligazione inserita!\n'
-
-    table = format_pretty_table(log, log_columns_names)
-
-    if not msg:
-        msg += 'nessuna obbgligazione è scesa sotto la soglia'
-
-    if cron:
-        log.insert(0, log_columns_names)
-        return(log, msg)
-    return '{}\n{}\n'.format(table, msg)
-
-
-def cron_get(choice):
-    if choice == 'stock':
-        return check_stocks(get_assets(STOCKS), cron=True)
-    elif choice == 'bond':
-        return check_bonds(get_assets(BONDS), cron=True)
-
-
-@click.group()
-def cli():
-
-    if not isfile(BONDS):
-        with open(BONDS, 'w') as f:
-            f.write('nome;isin;soglia\n')
-    if not isfile(STOCKS):
-        with open(STOCKS, 'w') as f:
-            f.write('nome;simbolo;soglia\n')
+@click.group(invoke_without_command=True)
+@click.pass_context
+def cli(ctx):
+    if not isfile(Const.DB):
+        init_db()
+    if not isfile(Const.CONFIGS):
+        with open(Const.CONFIGS, 'w') as f:
+            f.write('2000-01-01 00:00:00.000000\n')
+            f.write('2000-01-01 00:00:00.000000\n')
+    if ctx.invoked_subcommand is None:
+        click.echo(ctx.get_help())
 
 
 @cli.command()
+@click.option('--forced', is_flag=True)
 @click.option('--stock', 'only_one', flag_value='stock',
               help='controlla solo le azioni')
 @click.option('--bond', 'only_one', flag_value='bond',
               help='controlla solo le obbligazioni')
-def get(only_one):
+def get(forced, only_one):
     '''attiva il programma'''
-    try:
-        if only_one == 'stock':
-            click.echo('aggiorno i prezzi delle azioni\n')
-            click.echo(check_stocks(get_assets(STOCKS)))
+    stock_columns_names = [' ', 'nome', 'progresso', 'prezzo', 'variazione']
+    bond_columns_names = [' ', 'nome', 'progresso', 'prezzo', 'max_y', 'min_y',
+                          'yield_y', 'yield']
 
-        elif only_one == 'bond':
-            click.echo('aggiorno i prezzi delle obbligazioni\n')
-            click.echo(check_bonds(get_assets(BONDS)))
+    if forced:
+        click.echo('\nAggiorno il database\n')
+    else:
+        click.echo('\nAggiorno il database se necessario\n')
+    try:
+        update_db(forced)
+        stocks = session.query(Stock).all()
+        bonds = session.query(Bond).all()
+        notification_s = check_thresholds(stocks)
+        notification_b = check_thresholds(bonds)
+
+        if notification_s is not None:
+            content_s = [[s.threshold[0], s.name, s.progress, s.price,
+                          s.variation] for s in stocks]
+            pretty_s = format_pretty_table(content_s, stock_columns_names)
+            text_s = '{}\n{}\n\n'.format(notification_s.format('azione'),
+                                         pretty_s)
         else:
-            click.echo('aggiorno i prezzi di azioni e obbligazioni\n')
-            msg = check_stocks(get_assets(STOCKS))
-            msg += check_bonds(get_assets(BONDS))
-            click.echo(msg)
+            text_s = '\nATTENZIONE nessuna azione inserita nel database'
+
+        if notification_b is not None:
+            content_b = [[b.threshold[0], b.name, b.progress, b.price, b.max_y,
+                          b.min_y, b.yield_y, b.yield_tot] for b in bonds]
+            pretty_b = format_pretty_table(content_b, bond_columns_names)
+            text_b = '{}\n{}\n\n'.format(notification_b.format('obbligazione'),
+                                         pretty_b)
+        else:
+            text_b = '\nATTENZIONE nessuna obbligazione inserita nel database'
+
+        if only_one == 'stock':
+            click.echo(text_s)
+        elif only_one == 'bond':
+            click.echo(text_b)
+        else:
+            click.echo(''.join([text_s, text_b]))
     except SystemExit:
-        click.echo('ATTENZIONE nessuna connessione internet')
+        click.echo('\nATTENZIONE nessuna connessione internet')
 
 
 @cli.command()
@@ -284,13 +79,26 @@ def get(only_one):
               help='azione : NOME SIMBOLO SOGLIA')
 def add(bond, stock):
     ''' aggiungi un azione o obbligazione'''
-    # devo validare l input
-    if bond:
-        with open(BONDS, 'a') as f:
-            f.write('{0};{1};{2}\n'.format(*bond))
-    if stock:
-        with open(STOCKS, 'a') as f:
-            f.write('{0};{1};{2}\n'.format(*stock))
+    # sqlalchemy.exc.IntegrityError da gestire
+    success = '\n{} inserito!'
+    try:
+        if bond:
+            name, isin, threshold = bond
+            if threshold[0] is not '+':
+                threshold = ''.join(['-', threshold])
+            session.add(Bond(name=name, isin=isin, threshold=threshold))
+            session.commit()
+            click.echo(success.format(name))
+        if stock:
+            name, symbol, threshold = stock
+            if threshold[0] is not '+':
+                threshold = ''.join(['-', threshold])
+            session.add(Stock(name=name, symbol=symbol, threshold=threshold))
+            session.commit()
+            click.echo(success.format(name))
+        update_db(forced=True)
+    except IntegrityError:
+        click.echo('\nATTENZIONE simbolo o isin gia presente')
 
 
 @cli.command()
@@ -301,49 +109,42 @@ def add(bond, stock):
               help='NOME azione da rimuovere o modificare')
 def remove(mod, bond, stock):
     '''rimuovi un azione o obbligazione'''
-
-    if bond:
-        selected = BONDS
-        removed = bond.lower()
-        with open(BONDS, 'r') as f:
-            header = f.readline()
-            temp = f.readlines()
-
-    if stock:
-        selected = STOCKS
-        removed = stock.lower()
-        with open(STOCKS, 'r') as f:
-            header = f.readline()
-            temp = f.readlines()
-
     if mod:
-        new = [el for el in formatted(temp)]
-        with open(selected, 'w') as f:
-            f.write(header)
-            for line in new:
-                if line[0] == removed:
-                    f.write('{0};{1};{2}\n'.format(line[0], line[1], mod))
-                else:
-                    f.write('{0};{1};{2}\n'.format(*line))
+        if bond:
+            for b in session.query(Bond).filter(Bond.name == bond):
+                b.threshold = mod
+            session.commit()
+        if stock:
+            for s in session.query(Stock).filter(Stock.name == stock):
+                s.threshold = mod
+            session.commit()
     else:
         prompt = 'Vuoi davvero cancellare {}'
-        if click.confirm(prompt.format(removed), default=False):
+        if bond:
+            if click.confirm(prompt.format(bond), default=False):
+                for b in session.query(Bond).filter(Bond.name == bond):
+                    session.delete(b)
+                session.commit()
 
-            new = [el for el in formatted(temp) if el[0].lower() != removed]
-
-            with open(selected, 'w') as f:
-                f.write(header)
-                for line in new:
-                    f.write('{0};{1};{2}\n'.format(*line))
+        if stock:
+            if click.confirm(prompt.format(stock), default=False):
+                for s in session.query(Stock).filter(Stock.name == stock):
+                    session.delete(s)
+                session.commit()
 
 
 @cli.command()
 def show():
     '''mostra le azioni e obbligazioni inserite'''
-
-    with open(BONDS, 'r') as f, open(STOCKS, 'r') as d:
-        text = f.read().replace(';', ' ') + '\n' + d.read().replace(';', ' ')
-        click.echo_via_pager(text)
+    stock_columns_names = ['nome', 'simbolo', 'soglia']
+    bond_columns_names = ['nome', 'isin', 'soglia']
+    stocks = session.query(Stock).all()
+    bonds = session.query(Bond).all()
+    content_s = [[s.name, s.symbol, s.threshold] for s in stocks]
+    content_b = [[b.name, b.isin, b.threshold] for b in bonds]
+    pretty_table_s = format_pretty_table(content_s, stock_columns_names)
+    pretty_table_b = format_pretty_table(content_b, bond_columns_names)
+    click.echo_via_pager('{}\n{}'.format(pretty_table_s, pretty_table_b))
 
 
 if __name__ == '__main__':

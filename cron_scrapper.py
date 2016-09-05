@@ -1,7 +1,7 @@
 import datetime
 import imaplib
 import smtplib
-import scrapper as scr
+import data_processing as scr
 from socket import gaierror
 from subprocess import Popen, PIPE
 from email.mime.multipart import MIMEMultipart

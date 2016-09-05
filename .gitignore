@@ -1,9 +1,10 @@
 credentials.txt
 VENV
 scrapper.egg-info
-credentials.txt
 __pycache__
 bonds.csv
 testing.py
 stocks.csv
 table.html
+scrapper_config.txt
+scrapper.db
