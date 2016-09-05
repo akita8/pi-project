@@ -147,7 +147,7 @@ def add_bond(bond):
     name, isin, threshold = bond
     if threshold[0] is not '+':
         threshold = ''.join(['-', threshold])
-    bond = Bond(name=name, isin=isin, threshold=threshold)
+    bond = Bond(name=name.lower(), isin=isin.upper(), threshold=threshold)
     session.add(bond)
     session.commit()
     update_IT_bond_data([bond])
@@ -157,14 +157,14 @@ def add_stock(stock):
     name, symbol, threshold = stock
     if threshold[0] is not '+':
         threshold = ''.join(['-', threshold])
-    stock = Stock(name=name, symbol=symbol, threshold=threshold)
+    stock = Stock(name=name.lower(), symbol=symbol, threshold=threshold)
     session.add(stock)
     session.commit()
     update_stock_data([stock])
 
 
 def delete_stock(stock_name):
-    query = session.query(Stock).filter(Stock.name == stock_name).all()
+    query = session.query(Stock).filter(Stock.name == stock_name.lower()).all()
     if not query:
         return 'ATTENZIONE: {} non esiste nel database!'.format(stock_name)
     session.delete(query[0])
@@ -174,7 +174,7 @@ def delete_stock(stock_name):
 
 
 def delete_bond(bond_name):
-    query = session.query(Bond).filter(Bond.name == bond_name).all()
+    query = session.query(Bond).filter(Bond.name == bond_name.lower()).all()
     if not query:
         return 'ATTENZIONE: {} non esiste nel database!'.format(bond_name)
     session.delete(query[0])
