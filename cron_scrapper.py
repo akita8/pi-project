@@ -1,22 +1,28 @@
-import datetime
-import imaplib
-import smtplib
-import data_processing as scr
+from data.const import Const
+from data.database import session
+from data.models import Bond, Stock
+from data.processing import update_db, check_thresholds
+from data.processing import delete_stock, delete_bond, add_stock, add_bond
+from data.processing import stock_table, bond_table, show_assets
+from datetime import date
+from imaplib import IMAP4_SSL
+from smtplib import SMTP
+from sqlalchemy.exc import IntegrityError
 from socket import gaierror
 from subprocess import Popen, PIPE
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email import message_from_bytes
 
-CREDENTIALS = scr.ROOT_FOLDER + '/credentials.txt'
 
-with open(CREDENTIALS, 'r') as f:
-    cred = f.readline().strip('\n').split(',')
-    sender = cred[0]
-    rec = cred[1]
+with open(Const.CONFIGS, 'r') as f:
+    f.readline()
+    f.readline()
+    sender = f.readline().strip('\n')
+    rec = f.readline().strip('\n')
     psw = f.readline().strip('\n')
 
-today = datetime.date.today()
+today = date.today()
 
 
 def green_or_red(num):
@@ -28,7 +34,7 @@ def green_or_red(num):
 
 def send_email(message):
 
-    mail = smtplib.SMTP('smtp.gmail.com', 587)
+    mail = SMTP('smtp.gmail.com', 587)
     mail.ehlo()
     mail.starttls()
     mail.login(sender, psw)
@@ -60,9 +66,8 @@ def html_email(cmd, html):
     send_email(msg)
 
 
-def html_content(content, a_type):
-
-    table, msg = content
+def html_content(table, msg, a_type=None):
+    '''will be deprecated with jinja2 template'''
 
     style = '''"font-family:Rockwell, serif;font-size:14px;font-weight:normal;
                padding:10px 5px;border-style:solid;border-width:{}px;
@@ -129,9 +134,17 @@ def parse_command(command):
     if stmt == 'get':
         first_option = options[0].lower()
         if s in first_option:      # stock
-            html_email(' '.join([stmt, s]), html_content(scr.cron_get(s), s))
+            stocks = session.query(Stock).all()
+            notification_s = check_thresholds(stocks).format('azione')
+            table = stock_table(stocks)
+            html = html_content(table, notification_s, s)
+            html_email(' '.join([stmt, s]), html)
         elif b in first_option:    # bond
-            html_email(' '.join([stmt, b]), html_content(scr.cron_get(b), b))
+            bonds = session.query(Bond).all()
+            notification_b = check_thresholds(bonds).format('obbligazione')
+            table = bond_table(bonds)
+            html = html_content(table, notification_b, b)
+            html_email(' '.join([stmt, b]), html)
         elif i in first_option:    # ip
             cmd = ['hostname', '-I']
             p = Popen(cmd, stdout=PIPE)
@@ -142,53 +155,56 @@ def parse_command(command):
 
     elif stmt == 'add':
         first_option = options[0].lower()
+        if first_option != b and first_option != s:
+            failure_msg = "COMAND FALLITO: manca l'identificatore stock/bond"
+            text_email(stmt, first_option, failure_msg)
         try:
+            added = options[1:4]
             if s in first_option:      # stock
-                with open(scr.STOCKS, 'a') as f:
-                    stock = options[1:]
-                    f.write('{0};{1};{2}\n'.format(*stock))
-                    text_email(stmt, s, success_msg)
+                add_stock(added)
+                text_email(stmt, s, success_msg)
             elif b in first_option:    # bond
-                with open(scr.BONDS, 'a') as f:
-                    bond = options[1:]
-                    f.write('{0};{1};{2}\n'.format(*bond))
-                    text_email(stmt, b, success_msg)
+                add_bond(added)
+                text_email(stmt, b, success_msg)
         except IndexError:
+            text_email(stmt, first_option, failure_msg)
+        except IntegrityError:
+            failure_msg = 'COMAND FALLITO: simbolo/isin già presente'
             text_email(stmt, first_option, failure_msg)
 
     elif stmt == 'remove':
         first_option = options[0].lower()
-        removed = options[1].lower()
-        if s in first_option:      # stock
-            selected = scr.STOCKS
-            with open(selected, 'r') as f:
-                header = f.readline()
-                temp = f.readlines()
-        elif b in first_option:    # bond
-            selected = scr.BONDS
-            with open(selected, 'r') as f:
-                header = f.readline()
-                temp = f.readlines()
-        new = [el for el in scr.formatted(temp) if el[0].lower() != removed]
-        with open(selected, 'w') as f:
-            f.write(header)
-            for line in new:
-                f.write('{0};{1};{2}\n'.format(*line))
-        text_email(stmt, selected, success_msg)
+        if first_option != b and first_option != s:
+            failure_msg = "COMAND FALLITO: manca l'identificatore stock/bond"
+            text_email(stmt, first_option, failure_msg)
+        try:
+            removed = options[1].lower()
+            if s in first_option:      # stock
+                response = delete_stock(removed)
+            elif b in first_option:    # bond
+                response = delete_bond(removed)
+            text_email(stmt, first_option, '\n'.join([success_msg, response]))
+        except IndexError:
+            text_email(stmt, first_option, '\n'.join([failure_msg, response]))
 
     elif stmt == 'show':
-        with open(scr.BONDS, 'r') as f, open(scr.STOCKS, 'r') as d:
-            f.readline()
-            d.readline()
-            table = [['nome', 'isin/simbolo', 'soglia']]
-            table.extend([el.split(';') for el in f.readlines()])
-            table.extend([el.split(';') for el in d.readlines()])
-            html_email('show', html_content((table, None), None))
+        table_s, table_b = show_assets()
+        table_s.pop(0)
+        table_b.pop(0)
+        table_b.insert(0, ['', '', ''])
+        table = [['nome', 'isin/simbolo', 'soglia']]
+        table.extend(table_s)
+        table.extend(table_b)
+        html_email('show', html_content(table, None))
+
+    else:
+        failure_msg = "COMAND FALLITO: comando non riconusciuto"
+        text_email(stmt, first_option, failure_msg)
 
 
 def check_email():
     try:
-        conn = imaplib.IMAP4_SSL("imap.gmail.com", 993)
+        conn = IMAP4_SSL("imap.gmail.com", 993)
     except gaierror:
         raise SystemExit
     conn.login(sender, psw)
@@ -212,6 +228,7 @@ def check_email():
 
 if __name__ == '__main__':
     try:
+        update_db()
         check_email()
     except SystemExit:
         pass

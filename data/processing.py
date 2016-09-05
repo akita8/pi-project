@@ -121,6 +121,80 @@ def update_stock_data(stocks_list):
         session.commit()
 
 
+def stock_table(stocks):
+    columns_names = ['soglia', 'nome', 'progresso', 'prezzo', 'variazione']
+
+    content_s = [[s.threshold, s.name.lower(), s.progress, s.price,
+                  s.variation] for s in stocks]
+    content_s.sort(key=lambda x: x[1])
+    content_s.insert(0, columns_names)
+    return content_s
+
+
+def bond_table(bonds):
+    columns_names = ['soglia', 'nome', 'progresso', 'prezzo', 'max_y', 'min_y',
+                     'yield_y', 'yield']
+    raw_content_b = [[b.threshold, b.name, b.progress, b.price,
+                      b.max_y, b.min_y, b.yield_y, b.yield_tot,
+                      b.maturity] for b in bonds]
+    raw_content_b.sort(key=lambda x: x[-1])
+    content_b = [line[:-1] for line in raw_content_b]
+    content_b.insert(0, columns_names)
+    return content_b
+
+
+def add_bond(bond):
+    name, isin, threshold = bond
+    if threshold[0] is not '+':
+        threshold = ''.join(['-', threshold])
+    bond = Bond(name=name, isin=isin, threshold=threshold)
+    session.add(bond)
+    session.commit()
+    update_IT_bond_data([bond])
+
+
+def add_stock(stock):
+    name, symbol, threshold = stock
+    if threshold[0] is not '+':
+        threshold = ''.join(['-', threshold])
+    stock = Stock(name=name, symbol=symbol, threshold=threshold)
+    session.add(stock)
+    session.commit()
+    update_stock_data([stock])
+
+
+def delete_stock(stock_name):
+    query = session.query(Stock).filter(Stock.name == stock_name).all()
+    if not query:
+        return 'ATTENZIONE: {} non esiste nel database!'.format(stock_name)
+    session.delete(query[0])
+    session.flush()
+    session.commit()
+    return '{} cancellato!'.format(stock_name)
+
+
+def delete_bond(bond_name):
+    query = session.query(Bond).filter(Bond.name == bond_name).all()
+    if not query:
+        return 'ATTENZIONE: {} non esiste nel database!'.format(bond_name)
+    session.delete(query[0])
+    session.flush()
+    session.commit()
+    return '{} cancellato!'.format(bond_name)
+
+
+def show_assets():
+    stock_columns_names = ['nome', 'simbolo', 'soglia']
+    bond_columns_names = ['nome', 'isin', 'soglia']
+    stocks = session.query(Stock).all()
+    bonds = session.query(Bond).all()
+    content_s = [[s.name, s.symbol, s.threshold] for s in stocks]
+    content_b = [[b.name, b.isin, b.threshold] for b in bonds]
+    content_s.insert(0, stock_columns_names)
+    content_b.insert(0, bond_columns_names)
+    return (content_s, content_b)
+
+
 def update_db(forced=False):
 
     bonds = session.query(Bond).all()

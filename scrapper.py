@@ -3,6 +3,8 @@ from data.const import Const
 from data.database import session, init_db
 from data.models import Bond, Stock
 from data.processing import update_db, check_thresholds
+from data.processing import delete_stock, delete_bond, add_stock, add_bond
+from data.processing import stock_table, bond_table, show_assets
 from sqlalchemy.exc import IntegrityError
 from os.path import isfile
 from humanfriendly.tables import format_pretty_table
@@ -29,9 +31,6 @@ def cli(ctx):
               help='controlla solo le obbligazioni')
 def get(forced, only_one):
     '''attiva il programma'''
-    stock_columns_names = ['soglia', 'nome', 'progresso', 'prezzo', 'variazione']
-    bond_columns_names = ['soglia', 'nome', 'progresso', 'prezzo', 'max_y', 'min_y',
-                          'yield_y', 'yield']
 
     if forced:
         click.echo('\nAggiorno il database\n')
@@ -45,22 +44,16 @@ def get(forced, only_one):
         notification_b = check_thresholds(bonds)
 
         if notification_s is not None:
-            content_s = [[s.threshold, s.name.lower(), s.progress, s.price,
-                          s.variation] for s in stocks]
-            content_s.sort(key=lambda x: x[1])
-            pretty_s = format_pretty_table(content_s, stock_columns_names)
+            table = stock_table(stocks)
+            pretty_s = format_pretty_table(table[1:], column_names=table[0])
             text_s = '{}\n{}\n\n'.format(notification_s.format('azione'),
                                          pretty_s)
         else:
             text_s = '\nATTENZIONE nessuna azione inserita nel database'
 
         if notification_b is not None:
-            raw_content_b = [[b.threshold, b.name, b.progress, b.price,
-                              b.max_y, b.min_y, b.yield_y, b.yield_tot,
-                              b.maturity] for b in bonds]
-            raw_content_b.sort(key=lambda x: x[-1])
-            content_b = [line[:-1] for line in raw_content_b]
-            pretty_b = format_pretty_table(content_b, bond_columns_names)
+            table = bond_table(bonds)
+            pretty_b = format_pretty_table(table[1:], column_names=table[0])
             text_b = '{}\n{}\n\n'.format(notification_b.format('obbligazione'),
                                          pretty_b)
         else:
@@ -87,20 +80,11 @@ def add(bond, stock):
     success = '\n{} inserito!'
     try:
         if bond:
-            name, isin, threshold = bond
-            if threshold[0] is not '+':
-                threshold = ''.join(['-', threshold])
-            session.add(Bond(name=name, isin=isin, threshold=threshold))
-            session.commit()
-            click.echo(success.format(name))
+            add_bond(bond)
+            click.echo(success.format(bond[0]))
         if stock:
-            name, symbol, threshold = stock
-            if threshold[0] is not '+':
-                threshold = ''.join(['-', threshold])
-            session.add(Stock(name=name, symbol=symbol, threshold=threshold))
-            session.commit()
-            click.echo(success.format(name))
-        update_db(forced=True)
+            add_stock(stock)
+            click.echo(success.format(stock[0]))
     except IntegrityError:
         click.echo('\nATTENZIONE simbolo o isin gia presente')
 
@@ -124,30 +108,18 @@ def remove(mod, bond, stock):
             session.commit()
     else:
         prompt = 'Vuoi davvero cancellare {}'
-        if bond:
-            if click.confirm(prompt.format(bond), default=False):
-                for b in session.query(Bond).filter(Bond.name == bond):
-                    session.delete(b)
-                session.commit()
-
-        if stock:
-            if click.confirm(prompt.format(stock), default=False):
-                for s in session.query(Stock).filter(Stock.name == stock):
-                    session.delete(s)
-                session.commit()
+        if bond and click.confirm(prompt.format(bond), default=False):
+            click.echo(delete_bond(bond))
+        if stock and click.confirm(prompt.format(stock), default=False):
+            click.echo(delete_stock(stock))
 
 
 @cli.command()
 def show():
     '''mostra le azioni e obbligazioni inserite'''
-    stock_columns_names = ['nome', 'simbolo', 'soglia']
-    bond_columns_names = ['nome', 'isin', 'soglia']
-    stocks = session.query(Stock).all()
-    bonds = session.query(Bond).all()
-    content_s = [[s.name, s.symbol, s.threshold] for s in stocks]
-    content_b = [[b.name, b.isin, b.threshold] for b in bonds]
-    pretty_table_s = format_pretty_table(content_s, stock_columns_names)
-    pretty_table_b = format_pretty_table(content_b, bond_columns_names)
+    table_s, table_b = show_assets()
+    pretty_table_s = format_pretty_table(table_s[1:], table_s[0])
+    pretty_table_b = format_pretty_table(table_b[1:], table_b[0])
     click.echo_via_pager('{}\n{}'.format(pretty_table_s, pretty_table_b))
 
 
