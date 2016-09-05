@@ -2,7 +2,7 @@ from os.path import abspath, dirname
 
 
 def path(name):
-    return '/'.join([abspath(dirname(__package__)), name])
+    return ''.join([abspath(dirname(__file__)), name]).replace('data', '')
 
 
 class Const:
