@@ -102,3 +102,7 @@ def remove():
 def show():
     table_s, table_b = show_assets()
     return render_template('show.html', s=table_s, b=table_b)
+
+
+if __name__ == "__main__":
+    app.run(host='0.0.0.0')

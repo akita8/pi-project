@@ -268,21 +268,23 @@ def check_thresholds(asset_list):
     msg = ''
     msg_txt_up = '{} è salita sopra la soglia di {}, ultimo prezzo {}\n'
     msg_txt_down = '{} è scesa sotto la soglia di {}, ultimo prezzo {}\n'
+    fixed_t = Const.REPAYMENT
     if asset_list:
         for asset in asset_list:
-            threshold_prefix = asset.threshold[:1]
-            threshold = float(asset.threshold[1:])
-            if threshold_prefix == '+':
-                if asset.price > threshold:
-                    msg = ''.join([msg, msg_txt_up.format(asset.name,
-                                   str(threshold), asset.price)])
-            else:
-                if asset.price < threshold:
+            if asset.price is not None:
+                threshold_prefix = asset.threshold[:1]
+                threshold = float(asset.threshold[1:])
+                if threshold_prefix == '+':
+                    if asset.price > threshold:
+                        msg = ''.join([msg, msg_txt_up.format(asset.name,
+                                       str(threshold), asset.price)])
+                else:
+                    if asset.price < threshold:
+                        msg = ''.join([msg, msg_txt_down.format(asset.name,
+                                       str(threshold), asset.price)])
+                if asset.__tablename__ == 'bond' and asset.price < fixed_t:
                     msg = ''.join([msg, msg_txt_down.format(asset.name,
-                                   str(threshold), asset.price)])
-            if asset.__tablename__ == 'bond' and asset.price < Const.REPAYMENT:
-                msg = ''.join([msg, msg_txt_down.format(asset.name,
-                               str(Const.REPAYMENT), asset.price)])
+                                   str(Const.REPAYMENT), asset.price)])
         if not msg:
             msg = 'Nessun {} ha superato le soglie prefissate\n'
     else:
