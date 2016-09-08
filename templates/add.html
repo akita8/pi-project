@@ -1,0 +1,39 @@
+{% extends 'modify.html'%}
+{% block mod_content %}
+    {% if t == 'stock' %}
+        <form action="{{ url_for('add') }}" method=post class="form-inline">
+            <div class="form-group">
+                <label class="sr-only" for="stock_name">Stock name</label>
+                <input type="text" class="form-control" id="stock_name" name="stock_name" placeholder="Nome">
+            </div>
+            <div class="form-group">
+                <label class="sr-only" for="symbol">Stock symbol</label>
+                <input type="text" class="form-control" id="symbol" name="symbol" placeholder="Simbolo">
+            </div>
+            <div class="form-group">
+                <label class="sr-only" for="threshold">Stock threshold</label>
+                <input type="text" class="form-control" id="threshold" name="threshold" placeholder="Soglia">
+            </div>
+            <button type="submit" class="btn btn-default">Aggiungi</button>
+        </form>
+    {% else %}
+    <form action="{{ url_for('add') }}" method=post class="form-inline">
+        <div class="form-group">
+            <label class="sr-only" for="bond_name">Bond name</label>
+            <input type="text" class="form-control" id="bond_name" name="bond_name" placeholder="Nome">
+        </div>
+        <div class="form-group">
+            <label class="sr-only" for="isin">Stock Isin</label>
+            <input type="text" class="form-control" id="isin" name="isin" placeholder="Isin">
+        </div>
+        <div class="form-group">
+            <label class="sr-only" for="threshold">Bond threshold</label>
+            <input type="text" class="form-control" id="threshold" name=threshold placeholder="Soglia">
+        </div>
+        <button type="submit" class="btn btn-default">Aggiungi</button>
+    </form>
+    {% endif %}
+    <div id="back">
+        <button type="button" class="btn btn-default"  onclick="javascript:history.back()">Indietro</button>
+    </div>
+{% endblock %}

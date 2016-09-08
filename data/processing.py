@@ -1,6 +1,7 @@
 from .const import Const
 from .database import session
 from .models import Stock, Bond
+from sqlalchemy.exc import IntegrityError
 from requests import get, exceptions
 from datetime import datetime, date
 from bs4 import BeautifulSoup
@@ -121,8 +122,19 @@ def update_stock_data(stocks_list):
         session.commit()
 
 
+def tforce_sign(matrix, col_index):
+    for row in matrix:
+        for i in col_index:
+            row[i] = int(row[i])
+            if row[i] < 0:
+                row[i] = str(row[i])
+            else:
+                row[i] = '{}{}'.format('+', row[i])
+    return matrix
+
+
 def stock_table(stocks):
-    columns_names = ['soglia', 'nome', 'progresso', 'prezzo', 'variazione']
+    columns_names = ['Soglia', 'Nome', 'Progresso', 'Prezzo', 'Variazione']
 
     content_s = [[s.threshold, s.name.lower(), s.progress, s.price,
                   s.variation] for s in stocks]
@@ -132,35 +144,45 @@ def stock_table(stocks):
 
 
 def bond_table(bonds):
-    columns_names = ['soglia', 'nome', 'progresso', 'prezzo', 'max_y', 'min_y',
-                     'yield_y', 'yield']
+    columns_names = ['Soglia', 'Nome', 'Progresso', 'Prezzo', 'Max_y', 'Min_y',
+                     'Yield_y', 'Yield']
     raw_content_b = [[b.threshold, b.name, b.progress, b.price,
                       b.max_y, b.min_y, b.yield_y, b.yield_tot,
                       b.maturity] for b in bonds]
     raw_content_b.sort(key=lambda x: x[-1])
     content_b = [line[:-1] for line in raw_content_b]
+    content_b = tforce_sign(content_b, Const.COSTUM_COLOR_B)
     content_b.insert(0, columns_names)
     return content_b
 
 
-def add_bond(bond):
-    name, isin, threshold = bond
+def add_bond(name, isin, threshold):
+
     if threshold[0] is not '+':
         threshold = ''.join(['-', threshold])
     bond = Bond(name=name.lower(), isin=isin.upper(), threshold=threshold)
-    session.add(bond)
-    session.commit()
+    try:
+        session.add(bond)
+        session.commit()
+    except IntegrityError:
+        return '\nATTENZIONE isin già presente'
+
     update_IT_bond_data([bond])
+    return '\n{} inserito!'.format(name)
 
 
-def add_stock(stock):
-    name, symbol, threshold = stock
+def add_stock(name, symbol, threshold):
+
     if threshold[0] is not '+':
         threshold = ''.join(['-', threshold])
     stock = Stock(name=name.lower(), symbol=symbol, threshold=threshold)
-    session.add(stock)
-    session.commit()
+    try:
+        session.add(stock)
+        session.commit()
+    except IntegrityError:
+        return '\nATTENZIONE simbolo già presente'
     update_stock_data([stock])
+    return '\n{} inserito!'.format(name)
 
 
 def delete_stock(stock_name):
@@ -201,8 +223,8 @@ def update_db(forced=False):
     stocks = session.query(Stock).all()
 
     now = datetime.today()
-    twenty_m = 20*60
-    twelve_h = 12*60*60
+    timeout_s = Const.STOCK_TIMEOUT
+    timeout_b = Const.BOND_TIMEOUT
 
     with open(Const.CONFIGS, 'r')as f:
         previous_s = f.readline()
@@ -217,13 +239,13 @@ def update_db(forced=False):
     seconds_from_last_s = (now - last_stock_update).seconds
     seconds_from_last_b = (now - last_bond_update).seconds
 
-    if seconds_from_last_s > twenty_m or forced:
+    if seconds_from_last_s > timeout_s or forced:
         update_stock_data(stocks)
         raw_s = '{}\n'.format(str(now))
     else:
         raw_s = previous_s
 
-    if seconds_from_last_b > twelve_h or forced:
+    if seconds_from_last_b > timeout_b or forced:
         update_IT_bond_data(bonds)
         raw_b = '{}\n'.format(str(now))
     else:
@@ -258,6 +280,9 @@ def check_thresholds(asset_list):
                 if asset.price < threshold:
                     msg = ''.join([msg, msg_txt_down.format(asset.name,
                                    str(threshold), asset.price)])
+            if asset.__tablename__ == 'bond' and asset.price < Const.REPAYMENT:
+                msg = ''.join([msg, msg_txt_down.format(asset.name,
+                               str(Const.REPAYMENT), asset.price)])
         if not msg:
             msg = 'Nessun {} ha superato le soglie prefissate\n'
     else:

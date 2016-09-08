@@ -1,0 +1,9 @@
+{% extends "layout.html" %}
+{% block title %}Report{% endblock %}
+{% block content %}
+{% from 'macros.html' import render_table %}
+<h1>Azioni</h1>
+{{ render_table(s, color_s) }}
+<h1>Obbligazioni</h1>
+{{ render_table(b, color_b) }}
+{% endblock %}

@@ -1,0 +1,52 @@
+    body {
+        padding-top: 55px;
+        background-color: WhiteSmoke;
+    }
+
+    h1 {
+        font-family: "Lucida Console", Monaco, monospace;
+        font-size: 70px;
+        text-align: center;
+        font-weight: bold;
+    }
+
+    a {
+        font-family: "Lucida Console", Monaco, monospace;
+    }
+
+    #notification {
+        font-size: 20px;
+    }
+
+    #indh2 {
+        font-size: 45px;
+        font-variant: small-caps;
+        font-weight: bold;
+    }
+
+    #indh1 {
+        font-size: 80px;
+        font-variant: small-caps;
+        font-weight: bold;
+    }
+
+    .radio {
+        font-size: 20px;
+    }
+
+    #modify {
+        text-align: center;
+        padding: 30px;
+    }
+
+    #err {
+        color: red;
+    }
+
+    #succ {
+        color: green;
+    }
+
+    #back {
+        padding-top: 20px;
+    }

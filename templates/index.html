@@ -1,0 +1,23 @@
+{% extends "layout.html" %}
+{% block title %}Scrapper{% endblock %}
+{% block content %}
+<div class="jumbotron">
+    <h1 id="indh1">Notifiche</h1>
+    <h2 id="indh2">Azioni</h2>
+    <ul>
+    {% for line in notification_s%}
+    <li id="notification">
+        {{ line | capitalize }}
+    </li>
+    {% endfor %}
+    </ul>
+    <h2 id="indh2">Obbligazioni</h2>
+    <ul>
+    {% for line in notification_b%}
+    <li id="notification">
+        {{ line | capitalize }}
+    </li>
+    {% endfor %}
+    </ul>
+</div>
+{% endblock %}

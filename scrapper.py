@@ -5,7 +5,6 @@ from data.models import Bond, Stock
 from data.processing import update_db, check_thresholds
 from data.processing import delete_stock, delete_bond, add_stock, add_bond
 from data.processing import stock_table, bond_table, show_assets
-from sqlalchemy.exc import IntegrityError
 from os.path import isfile
 from humanfriendly.tables import format_pretty_table
 
@@ -77,16 +76,14 @@ def get(forced, only_one):
 def add(bond, stock):
     ''' aggiungi un azione o obbligazione'''
     # sqlalchemy.exc.IntegrityError da gestire
-    success = '\n{} inserito!'
-    try:
-        if bond:
-            add_bond(bond)
-            click.echo(success.format(bond[0]))
-        if stock:
-            add_stock(stock)
-            click.echo(success.format(stock[0]))
-    except IntegrityError:
-        click.echo('\nATTENZIONE simbolo o isin gia presente')
+    if bond:
+        n, i, t = bond
+        response = add_bond(n, i, t)
+        click.echo(response)
+    if stock:
+        n, s, t = stock
+        response = add_stock(n, s, t)
+        click.echo(response)
 
 
 @cli.command()

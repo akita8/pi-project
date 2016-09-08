@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="it">
+
+<head></head>
+
+<body>
+    {% macro render_table(matrix, color=[]) -%}
+    <table class="table">
+        {% for row in matrix %} {% if loop.index0 == 0 %}
+        <thead>
+            <tr class="info">
+                {% for el in row %}
+                <th>
+                    {{ el }}
+                </th>
+                {% endfor %}
+            </tr>
+        </thead>
+        {% else %}
+        <tbody>
+            <tr>
+                {% for el in row %}{% if loop.index0 in color %}{% if el[0] == '+' %}
+                    <th class="success">
+                        {{ el }}
+                    </th>
+                {% else %}
+                    <th class="danger">
+                        {{ el }}
+                    </th>
+                {% endif %} {% else %}
+                <th class="warning">
+                    {{ el }}
+                </th>
+                {% endif %} {% endfor %}
+            </tr>
+        </tbody>
+        {% endif %} {% endfor %}
+    </table>
+    {%- endmacro %}
+</body>
+
+</html>

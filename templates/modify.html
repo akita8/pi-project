@@ -1,0 +1,47 @@
+{% extends "layout.html" %}
+{% block title %}Modify{% endblock %}
+{% block content %}
+<div class="jumbotron">
+<h1 id="indh1">Manipolazione Database</h1>
+<div id="modify">
+{% block mod_content %}
+
+<form action="{{ url_for('modify') }}" method=post>
+     <div class="form-group">
+
+    <h3>Che tipo di operazione vuoi effetuare?:</h3>
+    <div class="hidden">
+        <div class="radio">
+          <label class="active"><input type="radio" name="command_choice" value="def" checked="">default</label>
+        </div>
+    </div>
+        <div class="radio">
+      <label><input type="radio" name="command_choice" value="add">Aggiunta</label>
+    </div>
+    <div class="radio">
+      <label><input type="radio" name="command_choice" value="remove">Rimozione</label>
+    </div>
+    <h3>Su quale tipo di titolo vuoi operare?:</h3>
+    <div class="hidden">
+    <div class="radio">
+      <label class="active"><input type="radio" name="type_choice" value="def" checked="">default</label>
+    </div>
+    </div>
+    <div class="radio">
+      <label><input type="radio" name="type_choice" value="stock">Stock</label>
+    </div>
+    <div class="radio">
+      <label><input type="radio" name="type_choice" value="bond">Bond</label>
+    </div>
+    </div>
+    <button type="submit" class="btn btn-secondary btn-lg">Conferma</button>
+</form>
+{%for message in get_flashed_messages() %}
+  <p id="err">{{ message }}</p>
+{% endfor %}
+{% endblock %}
+
+</div>
+</div>
+
+{% endblock %}
