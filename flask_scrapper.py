@@ -36,7 +36,6 @@ def index():
 
 @app.route('/report')
 def report():
-    update_db()
     query_s = db_session.query(Stock).all()
     query_b = db_session.query(Bond).all()
     table_s = stock_table(query_s)
