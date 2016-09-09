@@ -39,13 +39,8 @@
         padding: 30px;
     }
 
-    #err {
+    #alerts {
         padding-top: 20px;
-        color: red;
-    }
-
-    #succ {
-        color: green;
     }
 
     #back {

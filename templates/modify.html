@@ -2,7 +2,9 @@
 {% block title %}Modify{% endblock %}
 {% block content %}
 <div class="jumbotron">
-<h1 id="indh1">Manipolazione Database</h1>
+<div class="page-header">
+    <h1 id="indh1">Manipolazione Database</h1>
+</div>
 <div id="modify">
 {% block mod_content %}
 
@@ -34,10 +36,14 @@
       <label><input type="radio" name="type_choice" value="bond">Bond</label>
     </div>
     </div>
-    <button type="submit" class="btn btn-secondary btn-lg">Conferma</button>
+    <button type="submit" class="btn btn-default">Conferma</button>
 </form>
 {%for message in get_flashed_messages() %}
-  <p id="err">{{ message }}</p>
+<div id="alerts">
+<div class="alert alert-danger" role="alert">
+  <p >{{ message }}</p>
+ </div>
+ </div>
 {% endfor %}
 {% endblock %}
 

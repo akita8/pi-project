@@ -1,14 +1,24 @@
 {% extends 'modify.html'%}
 {% block mod_content %}
 {% if 'ATTENZIONE' in r %}
-<p id="err">
+<div class="alert alert-danger" role="alert">
+<div id="alerts">
+<p>
     {{ r }}
 </p>
+</div>
+</div>
 <button type="button" class="btn btn-default" onclick="javascript:history.back()">Indietro</button>
 {% else %}
-<p id="succ">
+<div class="alert alert-success" role="alert">
+<div id="alerts">
+<p>
     {{ r | capitalize}}
 </p>
+</div>
+</div>
+<div id="back">
 <a href="{{url_for('modify')}}"><button type="button" class="btn btn-default">Nuova operazione</button></a>
+<div id="alerts">
 {% endif %}
 {% endblock %}
