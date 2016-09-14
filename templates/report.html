@@ -2,12 +2,6 @@
 {% block title %}Report{% endblock %}
 {% block content %}
 {% from 'macros.html' import render_table %}
-<div class="page-header">
-    <h1>Azioni</h1>
-</div>
-{{ render_table(s, color_s) }}
-<div class="page-header">
-    <h1>Obbligazioni</h1>
-</div>
-{{ render_table(b, color_b) }}
+{{ render_table(s, "Azioni", color_s) }}
+{{ render_table(b, "Obbligazioni", color_b) }}
 {% endblock %}

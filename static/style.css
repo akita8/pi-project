@@ -1,48 +1,65 @@
-    body {
-        padding-top: 55px;
-        background-color: WhiteSmoke;
-    }
+body {
+    background-color: WhiteSmoke;
+    text-align: center;
+}
 
+h1 {
+    padding-top: 50px;
+    font-family: "Lucida Console", Monaco, monospace;
+    font-size: 70px;
+    font-weight: bold;
+}
+
+h2 {
+    padding-bottom: 25px;
+    font-size: 55px;
+    font-variant: small-caps;
+    font-weight: bold;
+}
+
+a {
+    font-family: "Lucida Console", Monaco, monospace;
+}
+
+.table-responsive {
+    overflow: auto;
+}
+
+.notification {
+    width: 500px;
+    margin-left: auto;
+    margin-right: auto;
+    font-size: 20px;
+}
+
+.radio {
+    font-size: 20px;
+}
+
+#alerts {
+    padding-top: 20px;
+}
+
+#back {
+    padding-top: 20px;
+}
+
+#confirm {
+    padding-bottom: 20px;
+}
+
+@media screen and (max-width: 768px) {
     h1 {
-        font-family: "Lucida Console", Monaco, monospace;
-        font-size: 70px;
-        text-align: center;
-        font-weight: bold;
+        font-size: 40px;
     }
-
-    a {
-        font-family: "Lucida Console", Monaco, monospace;
+    h2 {
+        font-size: 30px;
     }
-
-    #notification {
+    ​.notification {
+        width: 100px;
         font-size: 20px;
     }
-
-    #indh2 {
-        font-size: 45px;
-        font-variant: small-caps;
-        font-weight: bold;
-    }
-
-    #indh1 {
-        font-size: 80px;
-        font-variant: small-caps;
-        font-weight: bold;
-    }
-
     .radio {
-        font-size: 20px;
+        font-size: 15px
     }
-
-    #modify {
-        text-align: center;
-        padding: 30px;
-    }
-
-    #alerts {
-        padding-top: 20px;
-    }
-
-    #back {
-        padding-top: 20px;
-    }
+}

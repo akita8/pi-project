@@ -1,11 +1,9 @@
 {% extends "layout.html" %}
 {% block title %}Modify{% endblock %}
 {% block content %}
+<h1>Manipolazione Database</h1>
 <div class="jumbotron">
-<div class="page-header">
-    <h1 id="indh1">Manipolazione Database</h1>
-</div>
-<div id="modify">
+<div>
 {% block mod_content %}
 
 <form action="{{ url_for('modify') }}" method=post>
@@ -36,7 +34,9 @@
       <label><input type="radio" name="type_choice" value="bond">Bond</label>
     </div>
     </div>
-    <button type="submit" class="btn btn-default">Conferma</button>
+    <div id="confirm">
+        <button type="submit" class="btn btn-default">Conferma</button>
+    </div>
 </form>
 {%for message in get_flashed_messages() %}
 <div id="alerts">

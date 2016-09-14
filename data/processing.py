@@ -76,7 +76,10 @@ def update_IT_bond_data(bonds_list):
             values = [el.text for i, el in enumerate(raw_data)
                       if i > 5 and i < 44 and i % 2 != 0]
             data = dict(zip(keys, values))
-            bond.price = float(data['Prezzo ufficiale'].replace(',', '.'))
+            # not using prezzo ufficale anymore now ultimo prezzo index 1 of
+            # td_tags
+            # bond.price = float(data['Prezzo ufficiale'].replace(',', '.'))
+            bond.price = float(raw_data[1].text.replace(',', '.'))
             unpolished_date = datetime.strptime(data['Scadenza'], '%d/%m/%y')
             bond.maturity = unpolished_date.date()
             bond.max_y = float(data['Max Anno'].replace(',', '.'))
