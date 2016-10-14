@@ -23,5 +23,15 @@
     {% endfor %}
     </ul>
     </div>
+    <h2>Treasury</h2>
+    <div class="notification">
+    <ul>
+    {% for line in notification_bt%}
+    <li>
+        {{ line | capitalize }}
+    </li>
+    {% endfor %}
+    </ul>
+    </div>
 </div>
 {% endblock %}

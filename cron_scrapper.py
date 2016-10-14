@@ -1,9 +1,10 @@
 from data.const import Const
 from data.database import session
-from data.models import Bond, Stock
-from data.processing import update_db, check_thresholds
-from data.processing import delete_stock, delete_bond, add_stock, add_bond
-from data.processing import stock_table, bond_table, show_assets
+from data.models import Bond_IT, Bond_TR, Stock
+from data.processing import update_db, check_thresholds, show_assets
+from data.processing import delete_stock, delete_bond, add_stock
+from data.processing import add_bond_it, add_bond_tr
+from data.processing import stock_table, bond_it_table, bond_tr_table
 from datetime import date
 from imaplib import IMAP4_SSL
 from smtplib import SMTP
@@ -93,7 +94,9 @@ def html_content(table, msg, a_type=None):
                         var = cell[:-1]  # removing the % symbol
                         color = green_or_red(var)
                 # yield and yield_y
-                elif (i == 6 or i == 7) and a_type == 'bond':
+            elif (i == 6 or i == 7) and a_type == 'bond_it':
+                    color = green_or_red(cell)
+            elif (i == 4 or i == 5) and a_type == 'bond_tr':
                     color = green_or_red(cell)
             else:
                 border = 3
@@ -126,7 +129,8 @@ def parse_command(command):
     stmt = words[0].lower()
     options = words[1:]
     s = 'stock'
-    b = 'bond'
+    b = 'bond_it'
+    bt = 'bond_tr'
     i = 'ip'
     success_msg = 'COMANDO ESEGUITO: {}'.format(' '.join(words))
     failure_msg = 'COMAND FALLITO: {}'.format(' '.join(words))
@@ -140,10 +144,16 @@ def parse_command(command):
             html = html_content(table, notification_s, s)
             html_email(' '.join([stmt, s]), html)
         elif b in first_option:    # bond
-            bonds = session.query(Bond).all()
+            bonds = session.query(Bond_IT).all()
             notification_b = check_thresholds(bonds).format('obbligazione')
-            table = bond_table(bonds)
+            table = bond_it_table(bonds)
             html = html_content(table, notification_b, b)
+            html_email(' '.join([stmt, b]), html)
+        elif bt in first_option:    # bond
+            bonds = session.query(Bond_TR).all()
+            notification_b = check_thresholds(bonds).format('treasury')
+            table = bond_tr_table(bonds)
+            html = html_content(table, notification_b, bt)
             html_email(' '.join([stmt, b]), html)
         elif i in first_option:    # ip
             cmd = ['hostname', '-I']
@@ -229,6 +239,6 @@ def check_email():
 if __name__ == '__main__':
     try:
         update_db()
-        check_email()
+        # check_email()
     except SystemExit:
         pass

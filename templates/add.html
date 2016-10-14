@@ -16,18 +16,42 @@
             </div>
             <button type="submit" class="btn btn-default">Aggiungi</button>
         </form>
-    {% else %}
+    {% elif t == 'bond_it' %}
     <form action="{{ url_for('add') }}" method=post class="form-inline">
         <div class="form-group">
             <label class="sr-only" for="bond_name">Bond name</label>
             <input type="text" class="form-control" id="bond_name" name="bond_name" placeholder="Nome">
         </div>
         <div class="form-group">
-            <label class="sr-only" for="isin">Stock Isin</label>
+            <label class="sr-only" for="isin">Bond Isin</label>
             <input type="text" class="form-control" id="isin" name="isin" placeholder="Isin">
         </div>
         <div class="form-group">
             <label class="sr-only" for="threshold">Bond threshold</label>
+            <input type="text" class="form-control" id="threshold" name=threshold placeholder="Soglia">
+        </div>
+        <div class="form-group">
+            <label class="sr-only" for="typology">Bond typology</label>
+            <input type="text" class="form-control" id="typology" name=typology placeholder="Tipo(btp, bot..)">
+        </div>
+        <div class="form-group">
+            <label class="sr-only" for="coupon">Bond coupon</label>
+            <input type="text" class="form-control" id="coupon" name=coupon placeholder="Cedola">
+        </div>
+        <button type="submit" class="btn btn-default">Aggiungi</button>
+    </form>
+    {% else %}
+    <form action="{{ url_for('add') }}" method=post class="form-inline">
+        <div class="form-group">
+            <label class="sr-only" for="bond_name">Treasury name</label>
+            <input type="text" class="form-control" id="bond_name" name="bond_name" placeholder="Nome">
+        </div>
+        <div class="form-group">
+            <label class="sr-only" for="maturity">Treasury Maturity</label>
+            <input type="text" class="form-control" id="maturity" name="maturity" placeholder="Scadenza">
+        </div>
+        <div class="form-group">
+            <label class="sr-only" for="threshold">Treasury threshold</label>
             <input type="text" class="form-control" id="threshold" name=threshold placeholder="Soglia">
         </div>
         <button type="submit" class="btn btn-default">Aggiungi</button>

@@ -15,3 +15,4 @@ class Const:
     STOCK_TIMEOUT = 20*60
     COSTUM_COLOR_S = [4]
     COSTUM_COLOR_B = [6, 7]
+    COSTUM_COLOR_BT = [4, 5]

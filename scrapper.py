@@ -69,22 +69,28 @@ def get(forced, only_one):
 
 
 @cli.command()
-@click.option('--bond', nargs=3, type=str, default=(),
-              help='obbligazione : NOME-CEDOLA ISIN SOGLIA')
+@click.option('--bond', nargs=4, type=str, default=(),
+              help='treasury : NOME SCADENZA SOGLIA')
+@click.option('--bond', nargs=4, type=str, default=(),
+              help='obbligazione : NOME ISIN SOGLIA')
 @click.option('--stock', nargs=3, type=str, default=(),
               help='azione : NOME SIMBOLO SOGLIA')
-def add(bond, stock):
+def add(tres, bond,  stock):
     ''' aggiungi un azione o obbligazione'''
     # sqlalchemy.exc.IntegrityError da gestire
+    # nn funziona nn so se click
     if bond:
         n, i, t = bond
-        response = add_bond(n, i, t)
+        response = add_bond(name=n, isin=i, threshold=t)
         click.echo(response)
-    if stock:
+    elif stock:
         n, s, t = stock
         response = add_stock(n, s, t)
         click.echo(response)
-
+    elif tres:
+        n, m, t = tres
+        response = add_treasury(name=n, mat=m, threshold=t)
+        click.echo(response)
 
 @cli.command()
 @click.option('--mod', default='', help='modifica la soglia di notifica')

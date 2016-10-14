@@ -1,11 +1,11 @@
+import locale
 from .const import Const
 from .database import session
-from .models import Stock, Bond
+from .models import Stock, Bond_IT, Bond_TR
 from sqlalchemy.exc import IntegrityError
 from requests import get, exceptions
 from datetime import datetime, date
 from bs4 import BeautifulSoup
-from random import randint
 from time import sleep
 
 
@@ -30,9 +30,27 @@ def compute_progress(price, limit):
     return '{}%'.format(str(progress * 100)[:4])
 
 
-def update_treasury_data():
+def compute_yield(maturity, gross_coupon, price):
+    gross_coupon /= 100
+    net_coupon = gross_coupon - gross_coupon*Const.TAX
+    day_to_repayment = (maturity-date.today()).days
+    cumulative_coupon = (net_coupon/365.0)*day_to_repayment
+    cumulative_coupon *= Const.INVESTED
+    repayment_diff = Const.INVESTED - (Const.INVESTED*(price/100))
+    yield_tot = int(cumulative_coupon + repayment_diff)
+    yield_y = round(yield_tot/(day_to_repayment/365.0), 2)
+    # print(price)
+    # print('c : {} t: {} cc : {} rd : {} y: {} yy : {}'.format(
+    #    net_coupon, day_to_repayment, cumulative_coupon, repayment_diff,
+    #    yield_tot, yield_y))
+    return (yield_tot, yield_y)
+
+
+def update_bond_tr(bonds_list):
     '''
-        currently not used and needs sqlalchemy integration
+        arg type: list of sqlalchemy.orm models
+        description: scraps data from wall street journal,
+                     updates bonds prices and related values
     '''
     url = 'http://www.wsj.com/mdc/public/page/2_3020-treasury.html'
     try:
@@ -45,24 +63,28 @@ def update_treasury_data():
     raw = raw[:raw.index('Maturity')]
     sub_lists = [raw[i:i+6] for i in range(0, len(raw), 6)]
     polished_dict = {el[0]: el[1:] for el in sub_lists}
-    return polished_dict
+    for bond in bonds_list:
+        mat = bond.maturity.strftime('%m/%d/%Y')
+        if mat[0] == '0':
+            mat = mat[1:]
+        data = polished_dict[mat]
+        bond.price = float(data[2])
+        bond.coupon = float(data[0])/100
+        bond.progress = compute_progress(bond.price, bond.threshold[1:])
+        yields = compute_yield(bond.maturity, bond.coupon, bond.price)
+        bond.yield_tot, bond.yield_y = yields
+    session.commit()
 
 
-def update_IT_bond_data(bonds_list):
+def update_bond_it(bonds_list):
     '''
         arg type: list of sqlalchemy.orm models
         description: scraps data from borsaitaliana.it,
                      updates bonds prices and related values
-        data keys(for future reference):
-        Prezzo ufficiale, Numero Contratti, Lotto Minimo, Min Oggi,
-        Valuta di negoziazione, Max Oggi, Valuta di liquidazione,
-        Min Anno, Data Ultima Cedola Pagata, Max Anno, Tasso Prossima Cedola,
-        Tipo Bond, Scadenza, Codice Isin, Apertura, Mercato, Volume Ultimo:,
-        Tipologia, Volume totale
     '''
+    locale.setlocale(locale.LC_NUMERIC, 'it_IT.UTF-8')
     url = 'http://www.borsaitaliana.it/borsa/obbligazioni/mot/btp/scheda/'
     url_end = '.html?lang=it'
-
     for bond in bonds_list:
         try:
             html = get(''.join([url, bond.isin.upper(), url_end]))
@@ -76,30 +98,24 @@ def update_IT_bond_data(bonds_list):
             values = [el.text for i, el in enumerate(raw_data)
                       if i > 5 and i < 44 and i % 2 != 0]
             data = dict(zip(keys, values))
-            # not using prezzo ufficale anymore now ultimo prezzo index 1 of
-            # td_tags
-            # bond.price = float(data['Prezzo ufficiale'].replace(',', '.'))
-            bond.price = float(raw_data[1].text.replace(',', '.'))
-            unpolished_date = datetime.strptime(data['Scadenza'], '%d/%m/%y')
-            bond.maturity = unpolished_date.date()
-            bond.max_y = float(data['Max Anno'].replace(',', '.'))
-            bond.min_y = float(data['Min Anno'].replace(',', '.'))
-
-            gross_coupon = float(bond.name.split('-')[1].replace(',', '.'))/100
-            net_coupon = gross_coupon - gross_coupon*Const.TAX
-
-            day_to_repayment = (bond.maturity-date.today()).days
-            cumulative_coupon = (net_coupon/365.0)*day_to_repayment
-            cumulative_coupon *= Const.INVESTED
-            repayment_diff = Const.INVESTED - (Const.INVESTED*(bond.price/100))
-            bond.yield_tot = int(cumulative_coupon + repayment_diff)
-            bond.yield_y = round(bond.yield_tot/(day_to_repayment/365.0), 2)
+            last_price = raw_data[1].text
+            if last_price:
+                bond.price = locale.atof(last_price)
+            else:
+                bond.price = locale.atof(data['Prezzo ufficiale'])
+            unpol_date = datetime.strptime(data['Scadenza'], '%d/%m/%y')
+            bond.maturity = unpol_date.date()
+            bond.max_y = locale.atof(data['Max Anno'])
+            bond.min_y = locale.atof(data['Min Anno'])
+            # print(bond.name)
+            yields = compute_yield(bond.maturity, bond.coupon, bond.price)
+            bond.yield_tot, bond.yield_y = yields
             bond.progress = compute_progress(bond.price, bond.threshold[1:])
-        sleep(randint(1, 3))
+            sleep(1)
     session.commit()
 
 
-def update_stock_data(stocks_list):
+def update_stock(stocks_list):
     '''
         arg type: list of sqlalchemy.orm models
         description: using yahoo finance api updates stocks prices
@@ -125,6 +141,12 @@ def update_stock_data(stocks_list):
         session.commit()
 
 
+def tbalance(threshold):
+    if threshold[0] != '+':
+        return ''.join(['-', threshold])
+    return threshold
+
+
 def tforce_sign(matrix, col_index):
     for row in matrix:
         for i in col_index:
@@ -146,7 +168,7 @@ def stock_table(stocks):
     return content_s
 
 
-def bond_table(bonds):
+def bond_it_table(bonds):
     columns_names = ['Soglia', 'Nome', 'Progresso', 'Prezzo', 'Max_y', 'Min_y',
                      'Yield_y', 'Yield']
     raw_content_b = [[b.threshold, b.name, b.progress, b.price,
@@ -159,32 +181,63 @@ def bond_table(bonds):
     return content_b
 
 
-def add_bond(name, isin, threshold):
+def bond_tr_table(bonds):
+    columns_names = ['Soglia', 'Nome', 'Progresso', 'Prezzo', 'Yield_y',
+                     'Yield']
+    raw_content_b = [[b.threshold, b.name, b.progress, b.price, b.yield_y,
+                      b.yield_tot, b.maturity] for b in bonds]
+    raw_content_b.sort(key=lambda x: x[-1])
+    content_b = [line[:-1] for line in raw_content_b]
+    content_b = tforce_sign(content_b, Const.COSTUM_COLOR_BT)
+    content_b.insert(0, columns_names)
+    return content_b
 
-    if threshold[0] is not '+':
-        threshold = ''.join(['-', threshold])
-    bond = Bond(name=name.lower(), isin=isin.upper(), threshold=threshold)
+
+def add_bond_it(name, threshold, isin, typology, coupon):
+
+    threshold = tbalance(threshold)
+    coupon = locale.atof(coupon)
+    bond = Bond_IT(name=name.lower(), isin=isin.upper(), threshold=threshold,
+                   typology=typology, coupon=coupon)
     try:
         session.add(bond)
         session.commit()
     except IntegrityError:
-        return '\nATTENZIONE isin già presente'
+        return '\nATTENZIONE isin o data già presente'
 
-    update_IT_bond_data([bond])
+    update_bond_it([bond])
+
+    return '\n{} inserito!'.format(name)
+
+
+def add_bond_tr(name, threshold, maturity):
+
+    threshold = tbalance(threshold)
+
+    mat = datetime.strptime(maturity, '%m/%d/%Y').date()
+    bond = Bond_TR(name=name.lower(), maturity=mat, threshold=threshold)
+    try:
+        session.add(bond)
+        session.commit()
+    except IntegrityError:
+        return '\nATTENZIONE isin o data già presente'
+
+    update_bond_tr([bond])
+
     return '\n{} inserito!'.format(name)
 
 
 def add_stock(name, symbol, threshold):
 
-    if threshold[0] is not '+':
-        threshold = ''.join(['-', threshold])
+    threshold = tbalance(threshold)
+
     stock = Stock(name=name.lower(), symbol=symbol, threshold=threshold)
     try:
         session.add(stock)
         session.commit()
     except IntegrityError:
         return '\nATTENZIONE simbolo già presente'
-    update_stock_data([stock])
+    update_stock([stock])
     return '\n{} inserito!'.format(name)
 
 
@@ -198,31 +251,41 @@ def delete_stock(stock_name):
     return '{} cancellato!'.format(stock_name)
 
 
-def delete_bond(bond_name):
-    query = session.query(Bond).filter(Bond.name == bond_name.lower()).all()
+def delete_bond(name, bond_type):
+    # da ridefinire cn costanti
+    if bond_type == 1:
+        _type = Bond_IT
+    elif bond_type == 2:
+        _type = Bond_TR
+    query = session.query(_type).filter(_type.name == name.lower()).all()
     if not query:
-        return 'ATTENZIONE: {} non esiste nel database!'.format(bond_name)
+        return 'ATTENZIONE: {} non esiste nel database!'.format(name)
     session.delete(query[0])
     session.flush()
     session.commit()
-    return '{} cancellato!'.format(bond_name)
+    return '{} cancellato!'.format(name)
 
 
 def show_assets():
     stock_columns_names = ['nome', 'simbolo', 'soglia']
-    bond_columns_names = ['nome', 'isin', 'soglia']
+    bond_it_columns_names = ['nome', 'isin', 'soglia']
+    bond_tr_columns_names = ['nome', 'scadenza', 'soglia']
     stocks = session.query(Stock).all()
-    bonds = session.query(Bond).all()
+    bonds_it = session.query(Bond_IT).all()
+    bonds_tr = session.query(Bond_TR).all()
     content_s = [[s.name, s.symbol, s.threshold] for s in stocks]
-    content_b = [[b.name, b.isin, b.threshold] for b in bonds]
+    content_bi = [[b.name, b.isin, b.threshold] for b in bonds_it]
+    content_bt = [[b.name, b.maturity, b.threshold] for b in bonds_tr]
     content_s.insert(0, stock_columns_names)
-    content_b.insert(0, bond_columns_names)
-    return (content_s, content_b)
+    content_bi.insert(0, bond_it_columns_names)
+    content_bt.insert(0, bond_tr_columns_names)
+    return (content_s, content_bi, content_bt)
 
 
 def update_db(forced=False):
 
-    bonds = session.query(Bond).all()
+    bonds_it = session.query(Bond_IT).all()
+    bonds_tr = session.query(Bond_TR).all()
     stocks = session.query(Stock).all()
 
     now = datetime.today()
@@ -239,17 +302,20 @@ def update_db(forced=False):
 
     last_stock_update = datetime.strptime(raw_s, '%Y-%m-%d %H:%M:%S')
     last_bond_update = datetime.strptime(raw_b, '%Y-%m-%d %H:%M:%S')
-    seconds_from_last_s = (now - last_stock_update).seconds
-    seconds_from_last_b = (now - last_bond_update).seconds
+    seconds_from_last_s = (now - last_stock_update).total_seconds()
+    seconds_from_last_b = (now - last_bond_update).total_seconds()
+
+    updating_stocks = False
+    updating_bonds = False
 
     if seconds_from_last_s > timeout_s or forced:
-        update_stock_data(stocks)
+        updating_stocks = True
         raw_s = '{}\n'.format(str(now))
     else:
         raw_s = previous_s
 
     if seconds_from_last_b > timeout_b or forced:
-        update_IT_bond_data(bonds)
+        updating_bonds = True
         raw_b = '{}\n'.format(str(now))
     else:
         raw_b = previous_b
@@ -258,6 +324,12 @@ def update_db(forced=False):
         lines = [raw_s, raw_b] + other_configs
         for line in lines:
             f.write(line)
+
+    if updating_stocks:
+        update_stock(stocks)
+    if updating_bonds:
+        update_bond_it(bonds_it)
+        update_bond_tr(bonds_tr)
 
 
 def check_thresholds(asset_list):
