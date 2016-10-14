@@ -140,6 +140,8 @@ def update_stock(stocks_list):
 
 
 def tbalance(threshold):
+    if ',' in threshold:
+        threshold = threshold.replace(',', '.')
     if threshold[0] != '+':
         return ''.join(['-', threshold])
     return threshold
