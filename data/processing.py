@@ -21,7 +21,7 @@ def compute_progress(price, limit):
         return type: str
     '''
     price = float(price)
-    limit = locale.atof(limit)
+    limit = float(limit)
     if not price or not limit:
         return None
     if max(price, limit) == limit:  # price<limit
@@ -346,7 +346,7 @@ def check_thresholds(asset_list):
         for asset in asset_list:
             if asset.price is not None:
                 threshold_prefix = asset.threshold[:1]
-                threshold = locale.atof(asset.threshold[1:])
+                threshold = float(asset.threshold[1:])
                 if threshold_prefix == '+':
                     if asset.price > threshold:
                         msg = ''.join([msg, msg_txt_up.format(asset.name,
