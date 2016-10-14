@@ -9,6 +9,9 @@ from bs4 import BeautifulSoup
 from time import sleep
 
 
+locale.setlocale(locale.LC_NUMERIC, 'it_IT.UTF-8')
+
+
 def compute_progress(price, limit):
     '''
         args: float, Float
@@ -18,7 +21,7 @@ def compute_progress(price, limit):
         return type: str
     '''
     price = float(price)
-    limit = float(limit)
+    limit = locale.atof(limit)
     if not price or not limit:
         return None
     if max(price, limit) == limit:  # price<limit
@@ -39,10 +42,6 @@ def compute_yield(maturity, gross_coupon, price):
     repayment_diff = Const.INVESTED - (Const.INVESTED*(price/100))
     yield_tot = int(cumulative_coupon + repayment_diff)
     yield_y = round(yield_tot/(day_to_repayment/365.0), 2)
-    # print(price)
-    # print('c : {} t: {} cc : {} rd : {} y: {} yy : {}'.format(
-    #    net_coupon, day_to_repayment, cumulative_coupon, repayment_diff,
-    #    yield_tot, yield_y))
     return (yield_tot, yield_y)
 
 
@@ -82,7 +81,6 @@ def update_bond_it(bonds_list):
         description: scraps data from borsaitaliana.it,
                      updates bonds prices and related values
     '''
-    locale.setlocale(locale.LC_NUMERIC, 'it_IT.UTF-8')
     url = 'http://www.borsaitaliana.it/borsa/obbligazioni/mot/btp/scheda/'
     url_end = '.html?lang=it'
     for bond in bonds_list:
