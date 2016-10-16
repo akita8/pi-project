@@ -1,4 +1,5 @@
 import locale
+import logging
 from .const import Const
 from .database import session
 from .models import Stock, Bond_IT, Bond_TR
@@ -8,7 +9,9 @@ from datetime import datetime, date
 from bs4 import BeautifulSoup
 from time import sleep
 
-
+log_format = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+logging.basicConfig(format=log_format, level=logging.INFO)
+logger = logging.getLogger(__name__)
 locale.setlocale(locale.LC_NUMERIC, 'it_IT.UTF-8')
 
 
@@ -68,7 +71,7 @@ def update_bond_tr(bonds_list):
             mat = mat[1:]
         data = polished_dict[mat]
         bond.price = float(data[2])
-        bond.coupon = float(data[0])/100
+        bond.coupon = float(data[0])
         bond.progress = compute_progress(bond.price, bond.threshold[1:])
         yields = compute_yield(bond.maturity, bond.coupon, bond.price)
         bond.yield_tot, bond.yield_y = yields
