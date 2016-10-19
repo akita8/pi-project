@@ -1,4 +1,4 @@
-from json import dump, load
+from json import dumps, load
 from data.const import Const
 from data.database import session
 from data.models import Bond_IT, Bond_TR, Stock
@@ -262,7 +262,7 @@ def db_to_json():
         data = {'stock': st_nor, 'bond_it': bit_nor, 'bond_tr': btr_nor}
         daily_logs[now] = data
         with open(Const.LOG, 'w') as f:
-            f.write(dump(daily_logs))
+            f.write(dumps(daily_logs))
 
 
 if __name__ == '__main__':
