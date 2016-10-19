@@ -240,7 +240,7 @@ def check_email():
 def db_to_json():
     now = str(date.today())
     with open(Const.LOG, 'r') as f:
-        daily_logs = load(f.read())
+        daily_logs = load(f)
     if now not in daily_logs:
         st = session.query(Stock).all()
         bit = session.query(Bond_IT).all()
