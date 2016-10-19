@@ -7,6 +7,7 @@ def path(name):
 
 class Const:
     DB = path('scrapper.db')
+    LOG = path('log.json')
     CONFIGS = path('scrapper_config.txt')
     INVESTED = 10000
     REPAYMENT = 100
