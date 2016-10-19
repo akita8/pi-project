@@ -1,4 +1,4 @@
-from json import dumps, loads
+from json import dump, load
 from data.const import Const
 from data.database import session
 from data.models import Bond_IT, Bond_TR, Stock
@@ -240,7 +240,7 @@ def check_email():
 def db_to_json():
     now = str(date.today())
     with open(Const.LOG, 'r') as f:
-        daily_logs = loads(f.read())
+        daily_logs = load(f.read())
     if now not in daily_logs:
         st = session.query(Stock).all()
         bit = session.query(Bond_IT).all()
@@ -262,7 +262,7 @@ def db_to_json():
         data = {'stock': st_nor, 'bond_it': bit_nor, 'bond_tr': btr_nor}
         daily_logs[now] = data
         with open(Const.LOG, 'w') as f:
-            f.write(daily_logs)
+            f.write(dump(daily_logs))
 
 
 if __name__ == '__main__':
