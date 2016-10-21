@@ -8,3 +8,6 @@ stocks.csv
 table.html
 scrapper_config.txt
 scrapper.db
+scrapper_bot.py
+*.json
+*.pid
