@@ -64,14 +64,13 @@ def update_bond_tr(bonds_list):
     raw = [el.text for el in td_tags[8:]]
     raw = raw[:raw.index('Maturity')]
     sub_lists = [raw[i:i+6] for i in range(0, len(raw), 6)]
-    polished_dict = {el[0]: el[1:] for el in sub_lists}
+    polished_dict = {(el[0], el[1]): el[3] for el in sub_lists}
     for bond in bonds_list:
         mat = bond.maturity.strftime('%m/%d/%Y')
+        cup = bond.coupon
         if mat[0] == '0':
             mat = mat[1:]
-        data = polished_dict[mat]
-        bond.price = float(data[2])
-        bond.coupon = float(data[0])
+        bond.price = float(polished_dict[(mat, cup)])
         bond.progress = compute_progress(bond.price, bond.threshold[1:])
         yields = compute_yield(bond.maturity, bond.coupon, bond.price)
         bond.yield_tot, bond.yield_y = yields
@@ -206,19 +205,20 @@ def add_bond_it(name, threshold, isin, typology, coupon):
         session.add(bond)
         session.commit()
     except IntegrityError:
-        return '\nATTENZIONE isin o data già presente'
+        return '\nATTENZIONE isin già presente'
 
     update_bond_it([bond])
 
     return '\n{} inserito!'.format(name)
 
 
-def add_bond_tr(name, threshold, maturity):
+def add_bond_tr(name, threshold, maturity, coupon):
 
     threshold = tbalance(threshold)
 
     mat = datetime.strptime(maturity, '%m/%d/%Y').date()
-    bond = Bond_TR(name=name.lower(), maturity=mat, threshold=threshold)
+    bond = Bond_TR(name=name.lower(), maturity=mat, threshold=threshold,
+                   coupon=coupon)
     try:
         session.add(bond)
         session.commit()

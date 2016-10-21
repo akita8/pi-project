@@ -64,7 +64,7 @@ class Bond_IT(Base):
 class Bond_TR(Base):
     __tablename__ = 'bond_tr'
     id = Column(Integer, primary_key=True)
-    maturity = Column(Date(), unique=True)
+    maturity = Column(Date())
     name = Column(String(50))
     coupon = Column(Float())
     threshold = Column(String(10))
