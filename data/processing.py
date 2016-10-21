@@ -64,7 +64,7 @@ def update_bond_tr(bonds_list):
     raw = [el.text for el in td_tags[8:]]
     raw = raw[:raw.index('Maturity')]
     sub_lists = [raw[i:i+6] for i in range(0, len(raw), 6)]
-    polished_dict = {(el[0], el[1]): el[3] for el in sub_lists}
+    polished_dict = {(el[0], float(el[1])): el[3] for el in sub_lists}
     for bond in bonds_list:
         mat = bond.maturity.strftime('%m/%d/%Y')
         cup = bond.coupon
