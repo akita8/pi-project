@@ -94,7 +94,7 @@ def add():
             threshold = request.form['threshold']
             maturity = request.form['maturity']
             coupon = request.form['coupon']
-            response = add_bond_tr(name, threshold, maturity)
+            response = add_bond_tr(name, threshold, maturity, coupon)
         return render_template('modify_results.html', r=response)
     else:
         return render_template('add.html', t=session.get('type_choice'))
