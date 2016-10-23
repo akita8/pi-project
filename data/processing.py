@@ -427,3 +427,27 @@ def check_thresholds(asset_list):
     else:
         return None
     return msg
+
+
+def thresholds():
+    query_s = session.query(Stock).all()
+    query_b = session.query(Bond_IT).all()
+    query_bt = session.query(Bond_TR).all()
+    query_be = session.query(Bond_ETLX).all()
+    if not query_b:
+        n_b = ['nessuna obbligazione inserita nel database']
+    else:
+        n_b = check_thresholds(query_b).format('obbligazione').split('\n')[:-1]
+    if not query_s:
+        n_s = ['nessuna azione inserita nel database']
+    else:
+        n_s = check_thresholds(query_s).format('azione').split('\n')[:-1]
+    if not query_bt:
+        n_bt = ['nessuna treasury inserita nel database']
+    else:
+        n_bt = check_thresholds(query_bt).format('treasury').split('\n')[:-1]
+    if not query_be:
+        n_be = ['nessuna obbligazione etlx inserita nel database']
+    else:
+        n_be = check_thresholds(query_be).format('ETLX').split('\n')[:-1]
+    return (n_s, n_b, n_bt, n_be)

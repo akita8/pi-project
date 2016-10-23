@@ -2,9 +2,9 @@ from data.const import Const
 from data.database import session as db_session
 from data.models import Stock, Bond_IT, Bond_TR, Bond_ETLX
 from data.processing import stock_table, bond_table, bond_tr_table
-from data.processing import check_thresholds, show_assets
+from data.processing import show_assets
 from data.processing import add_bond_it, add_bond_tr, add_stock, add_bond_etlx
-from data.processing import delete_bond, delete_stock
+from data.processing import delete_bond, delete_stock, thresholds
 from flask import Flask
 from flask import render_template, request, flash, redirect, url_for, session
 
@@ -23,26 +23,7 @@ def shutdown_session(exception=None):
 
 @app.route('/')
 def index():
-    query_s = db_session.query(Stock).all()
-    query_b = db_session.query(Bond_IT).all()
-    query_bt = db_session.query(Bond_TR).all()
-    query_be = db_session.query(Bond_ETLX).all()
-    if not query_b:
-        n_b = ['nessuna obbligazione inserita nel database']
-    else:
-        n_b = check_thresholds(query_b).format('obbligazione').split('\n')[:-1]
-    if not query_s:
-        n_s = ['nessuna azione inserita nel database']
-    else:
-        n_s = check_thresholds(query_s).format('azione').split('\n')[:-1]
-    if not query_bt:
-        n_bt = ['nessuna treasury inserita nel database']
-    else:
-        n_bt = check_thresholds(query_bt).format('treasury').split('\n')[:-1]
-    if not query_be:
-        n_be = ['nessuna obbligazione etlx inserita nel database']
-    else:
-        n_be = check_thresholds(query_be).format('ETLX').split('\n')[:-1]
+    n_s, n_b, n_bt, n_be = thresholds()
     return render_template('index.html',
                            notification_s=n_s, notification_b=n_b,
                            notification_bt=n_bt, notification_be=n_be)
