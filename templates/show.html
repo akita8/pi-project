@@ -2,20 +2,13 @@
 {% block title %}Show{% endblock %}
 {% block content %}
 {% from 'macros.html' import render_table %}
-<div class="row">
-  <div class="col-sm-6">
+
       {{ render_table(s) }}
-  </div>
-  <div class="col-sm-6">
+
       {{ render_table(b) }}
-  </div>
-</div>
- <div class="row">
-  <div class="col-sm-6">
+
       {{ render_table(bt) }}
-  </div>
-  <div class="col-sm-6">
+
       {{ render_table(be) }}
-  </div>
-</div>
+
 {% endblock %}
