@@ -33,5 +33,15 @@
     {% endfor %}
     </ul>
     </div>
+    <h2>Obbligazioni etlx</h2>
+    <div class="notification">
+    <ul>
+    {% for line in notification_be%}
+    <li>
+        {{ line | capitalize }}
+    </li>
+    {% endfor %}
+    </ul>
+    </div>
 </div>
 {% endblock %}

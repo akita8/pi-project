@@ -86,3 +86,37 @@ class Bond_TR(Base):
 
     def __repr__(self):
         return '<Bond_tr %r>' % (str(self.maturity))
+
+
+class Bond_ETLX(Base):
+    __tablename__ = 'bond_etlx'
+    id = Column(Integer, primary_key=True)
+    isin = Column(String(50), unique=True)
+    name = Column(String(50))
+    coupon = Column(Float())
+    threshold = Column(String(10))
+    progress = Column(String(10))
+    price = Column(Float())
+    max_y = Column(Float())
+    min_y = Column(Float())
+    yield_y = Column(Float())
+    yield_tot = Column(Float())
+    maturity = Column(Date())
+
+    def __init__(self, isin=None, name=None, coupon=None, threshold=None,
+                 progress=None, price=None, max_y=None, min_y=None,
+                 yield_y=None, yield_tot=None, maturity=None):
+        self.isin = isin
+        self.name = name
+        self.threshold = threshold
+        self.coupon = coupon
+        self.progress = progress
+        self.price = price
+        self.max_y = max_y
+        self.min_y = min_y
+        self.yield_y = yield_y
+        self.yield_tot = yield_tot
+        self.maturity = maturity
+
+    def __repr__(self):
+        return '<Bond_etlx %r>' % (self.name)

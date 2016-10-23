@@ -2,7 +2,7 @@ import locale
 import logging
 from .const import Const
 from .database import session
-from .models import Stock, Bond_IT, Bond_TR
+from .models import Stock, Bond_IT, Bond_TR, Bond_ETLX
 from sqlalchemy.exc import IntegrityError
 from requests import get, exceptions
 from datetime import datetime, date
@@ -74,6 +74,41 @@ def update_bond_tr(bonds_list):
         bond.progress = compute_progress(bond.price, bond.threshold[1:])
         yields = compute_yield(bond.maturity, bond.coupon, bond.price)
         bond.yield_tot, bond.yield_y = yields
+    session.commit()
+
+
+def update_bond_etlx(bonds_list):
+    url = 'http://www.eurotlx.com/it/strumenti/dettaglio/'
+    for bond in bonds_list:
+        try:
+            html = get(''.join([url, bond.isin.upper()]))
+        except exceptions.ConnectionError:
+            raise SystemExit
+        soup = BeautifulSoup(html.text, 'html.parser')
+        raw_data = soup.find_all('td')
+        if raw_data:
+            values = {
+                raw_data[cont].text: raw_data[cont+1].text
+                for cont in range(32, 102, 2)}
+            price = values['Prezzo']
+            dynamic_price = values['Prezzo di riferimento dinamico']
+            closing_price = values['Prezzo di chiusura']
+            if price != '-':
+                bond.price = locale.atof(price)
+            elif dynamic_price != '-':
+                bond.price = locale.atof(dynamic_price)
+            elif closing_price != '-':
+                bond.price = locale.atof(closing_price)
+            bond.coupon = locale.atof(values['Tasso cedola in corso'])
+            date = values['Data di scadenza']
+            unpol_date = datetime.strptime(date, '%d-%m-%Y')
+            bond.maturity = unpol_date.date()
+            bond.max_y = locale.atof(values["Massimo dell'anno"])
+            bond.min_y = locale.atof(values["Minimo dell'anno"])
+            yields = compute_yield(bond.maturity, bond.coupon, bond.price)
+            bond.yield_tot, bond.yield_y = yields
+            bond.progress = compute_progress(bond.price, bond.threshold[1:])
+            sleep(10)
     session.commit()
 
 
@@ -170,7 +205,7 @@ def stock_table(stocks):
     return content_s
 
 
-def bond_it_table(bonds):
+def bond_table(bonds):
     columns_names = ['Soglia', 'Nome', 'Progresso', 'Prezzo', 'Max_y', 'Min_y',
                      'Yield_y', 'Yield']
     raw_content_b = [[b.threshold, b.name, b.progress, b.price,
@@ -230,6 +265,21 @@ def add_bond_tr(name, threshold, maturity, coupon):
     return '\n{} inserito!'.format(name)
 
 
+def add_bond_etlx(name, threshold, isin):
+
+    threshold = tbalance(threshold)
+    bond = Bond_ETLX(name=name.lower(), isin=isin.upper(), threshold=threshold)
+    try:
+        session.add(bond)
+        session.commit()
+    except IntegrityError:
+        return '\nATTENZIONE isin già presente'
+
+    update_bond_etlx([bond])
+
+    return '\n{} inserito!'.format(name)
+
+
 def add_stock(name, symbol, threshold):
 
     threshold = tbalance(threshold)
@@ -260,6 +310,8 @@ def delete_bond(name, bond_type):
         _type = Bond_IT
     elif bond_type == 2:
         _type = Bond_TR
+    elif bond_type == 3:
+        _type = Bond_ETLX
     query = session.query(_type).filter(_type.name == name.lower()).all()
     if not query:
         return 'ATTENZIONE: {} non esiste nel database!'.format(name)
@@ -272,23 +324,28 @@ def delete_bond(name, bond_type):
 def show_assets():
     stock_columns_names = ['nome', 'simbolo', 'soglia']
     bond_it_columns_names = ['nome', 'isin', 'soglia']
+    bond_etlx_columns_names = ['nome', 'isin', 'soglia']
     bond_tr_columns_names = ['nome', 'scadenza', 'soglia']
     stocks = session.query(Stock).all()
     bonds_it = session.query(Bond_IT).all()
+    bonds_etlx = session.query(Bond_ETLX).all()
     bonds_tr = session.query(Bond_TR).all()
     content_s = [[s.name, s.symbol, s.threshold] for s in stocks]
     content_bi = [[b.name, b.isin, b.threshold] for b in bonds_it]
+    content_be = [[b.name, b.isin, b.threshold] for b in bonds_etlx]
     content_bt = [[b.name, b.maturity, b.threshold] for b in bonds_tr]
     content_s.insert(0, stock_columns_names)
     content_bi.insert(0, bond_it_columns_names)
+    content_be.insert(0, bond_etlx_columns_names)
     content_bt.insert(0, bond_tr_columns_names)
-    return (content_s, content_bi, content_bt)
+    return (content_s, content_bi, content_bt, content_be)
 
 
 def update_db(forced=False):
 
     bonds_it = session.query(Bond_IT).all()
     bonds_tr = session.query(Bond_TR).all()
+    bonds_etlx = session.query(Bond_ETLX).all()
     stocks = session.query(Stock).all()
 
     now = datetime.today()
@@ -333,6 +390,7 @@ def update_db(forced=False):
     if updating_bonds:
         update_bond_it(bonds_it)
         update_bond_tr(bonds_tr)
+        update_bond_etlx(bonds_etlx)
 
 
 def check_thresholds(asset_list):
@@ -347,7 +405,7 @@ def check_thresholds(asset_list):
     msg_txt_up = '{} è salita sopra la soglia di {}, ultimo prezzo {}\n'
     msg_txt_down = '{} è scesa sotto la soglia di {}, ultimo prezzo {}\n'
     fixed_t = Const.REPAYMENT
-    fixed = ['bond_it', 'bond_tr']
+    fixed = ['bond_it', 'bond_tr', 'bond_etlx']
     if asset_list:
         for asset in asset_list:
             if asset.price is not None:
