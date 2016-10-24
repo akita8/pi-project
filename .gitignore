@@ -11,3 +11,4 @@ scrapper.db
 scrapper_bot.py
 *.json
 *.pid
+*.out
